@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Editor and OS files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Archives created during local cleanup
+_archive/
+.vscode
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .NET generated files
+bin/
+obj/

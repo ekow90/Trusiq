@@ -1,0 +1,340 @@
+﻿import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
+type AccountType = "customer" | "business";
+
+const accountCopy = {
+  customer: {
+    eyebrow: "Customer account",
+    title: "Join Trusiq as a customer",
+    description:
+      "Discover verified businesses and manage trust with clear, reliable insight.",
+    submit: "Create Customer Account",
+    fields: [
+      {
+        icon: "bi-person",
+        label: "Full name",
+        placeholder: "John Doe",
+        type: "text",
+      },
+      {
+        icon: "bi-envelope",
+        label: "Email address",
+        placeholder: "john@example.com",
+        type: "email",
+      },
+    ],
+  },
+  business: {
+    eyebrow: "Business account",
+    title: "Register your business",
+    description:
+      "Build trust, verify your profile, and connect with customers more confidently.",
+    submit: "Create Business Account",
+    fields: [
+      {
+        icon: "bi-person",
+        label: "Owner name",
+        placeholder: "Jane Mensah",
+        type: "text",
+      },
+      {
+        icon: "bi-building",
+        label: "Business name",
+        placeholder: "Kora Kitchen",
+        type: "text",
+      },
+      {
+        icon: "bi-tags",
+        label: "Business category",
+        placeholder: "Restaurant, retail, service...",
+        type: "text",
+      },
+      {
+        icon: "bi-geo-alt",
+        label: "Business location",
+        placeholder: "East Legon, Accra",
+        type: "text",
+      },
+      {
+        icon: "bi-telephone",
+        label: "Contact phone",
+        placeholder: "+233 24 000 0000",
+        type: "tel",
+      },
+      {
+        icon: "bi-globe",
+        label: "Website or profile link",
+        placeholder: "https://yourbusiness.com",
+        type: "url",
+      },
+      {
+        icon: "bi-envelope",
+        label: "Business email",
+        placeholder: "hello@business.com",
+        type: "email",
+      },
+    ],
+  },
+};
+
+const trustBenefits = [
+  "Verified profile for business trust",
+  "Access to reputational insights",
+  "Simple onboarding with secure controls",
+];
+
+export function RegistrationPage() {
+  const navigate = useNavigate();
+  const [accountType, setAccountType] = useState<AccountType>("customer");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const copy = accountCopy[accountType];
+
+  return (
+    <div className="min-h-screen bg-[#f4f9fc] text-[#12304a]">
+      <div className="trusiq-shell min-h-screen flex flex-col justify-center px-4 py-10">
+        <main className="mx-auto grid w-full max-w-[1240px] gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="relative rounded-[36px] bg-[#12304a] px-10 py-10 text-white shadow-[0_24px_90px_rgba(18,48,74,0.18)] sm:px-10 sm:py-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_18%),radial-gradient(circle_at_bottom_right,rgba(94,161,255,0.12),transparent_28%)]" />
+            <div className="relative z-20 flex flex-col justify-center gap-10 h-full">
+              <div className="overflow-hidden rounded-[28px] bg-[url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center">
+                <div className="h-56 bg-gradient-to-t from-[#12304a]/95 via-[#12304a]/70 to-transparent px-6 py-6 flex items-end">
+                  <div className="max-w-xl">
+                    <h2 className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
+                      Build trust with a polished business presentation.
+                    </h2>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-5 text-left">
+                <div className="inline-flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-[#c6def9]">
+                  <i className="bi bi-building" aria-hidden="true" />
+                  Trusted business onboarding
+                </div>
+                <div>
+                  <h1 className="text-4xl font-black leading-tight tracking-[-0.05em] sm:text-5xl">
+                    {copy.title}
+                  </h1>
+                  <p className="mt-5 max-w-2xl text-base leading-7 text-[#d4e6f7]">
+                    {copy.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {trustBenefits.map((benefit) => (
+                  <div
+                    key={benefit}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm"
+                  >
+                    <p className="text-sm font-black text-[#e9f5ff]">
+                      {benefit}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="relative overflow-hidden rounded-2xl bg-[#134468]/85 p-6">
+                  <div className="relative z-10">
+                    <p className="text-xs uppercase tracking-[0.24em] text-[#b8d7f0]">
+                      Stay verified
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[#d4e6f7]">
+                      Help customers choose your business with a clean, verified
+                      presence.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#12304a]/60 to-transparent" />
+                </div>
+
+                <div className="relative overflow-hidden rounded-2xl bg-[#1b4f77]/85 p-6">
+                  <div className="relative z-10">
+                    <p className="text-xs uppercase tracking-[0.24em] text-[#b8d7f0]">
+                      Build trust fast
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[#d4e6f7]">
+                      A smooth registration path helps your business earn
+                      reputation quickly.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#12304a]/60 to-transparent" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[36px] bg-white p-8 shadow-[0_24px_70px_rgba(18,48,74,0.08)] sm:p-10">
+            <div className="mb-8 text-center">
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#657b8b]">
+                {accountType === "customer"
+                  ? "Customer registration"
+                  : "Business registration"}
+              </p>
+              <h2 className="mt-4 text-3xl font-black text-[#12304a]">
+                Create your account
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[#657b8b]">
+                {accountType === "customer"
+                  ? "Join Trusiq and discover trusted businesses."
+                  : "Claim your business and start building your trusted profile."}
+              </p>
+            </div>
+
+            <div className="grid gap-3 rounded-[24px] bg-[#d8e6ef] p-4 sm:grid-cols-2">
+              <ModeButton
+                active={accountType === "customer"}
+                icon="bi-person"
+                label="Customer"
+                onClick={() => setAccountType("customer")}
+              />
+              <ModeButton
+                active={accountType === "business"}
+                icon="bi-briefcase"
+                label="Business"
+                onClick={() => setAccountType("business")}
+              />
+            </div>
+
+            <form
+              className="mt-6 grid gap-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                navigate("/login");
+              }}
+            >
+              {copy.fields.map((field) => (
+                <Field key={field.label} {...field} />
+              ))}
+              <Field
+                actionIcon={showPassword ? "bi-eye" : "bi-eye-slash"}
+                icon="bi-lock"
+                label="Password"
+                placeholder="Create a strong password"
+                type={showPassword ? "text" : "password"}
+                onAction={() => setShowPassword((value) => !value)}
+              />
+              <Field
+                actionIcon={showConfirmPassword ? "bi-eye" : "bi-eye-slash"}
+                icon="bi-shield-check"
+                label="Confirm password"
+                placeholder="Repeat your password"
+                type={showConfirmPassword ? "text" : "password"}
+                onAction={() => setShowConfirmPassword((value) => !value)}
+              />
+              <button
+                className="mt-2 flex h-14 w-full items-center justify-center rounded-3xl bg-[#12304a] text-base font-black text-white shadow-[0_18px_32px_rgba(18,48,74,0.18)] transition hover:bg-[#0f283f] active:translate-y-0.5"
+                type="submit"
+              >
+                {copy.submit}
+              </button>
+            </form>
+
+            <div className="my-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#b09b88]">
+              <span className="h-px flex-1 bg-[#d8e6ef]" />
+              or
+              <span className="h-px flex-1 bg-[#d8e6ef]" />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ProviderButton icon="bi-google" label="Google" />
+              <ProviderButton icon="bi-apple" label="Apple / iCloud" />
+              <ProviderButton icon="bi-microsoft" label="Microsoft" />
+            </div>
+
+            <p className="mt-6 text-center text-sm font-semibold text-[#657b8b]">
+              Already have an account?{" "}
+              <Link
+                className="font-black text-[#12304a] transition hover:text-[#0f283f]"
+                to="/login"
+              >
+                Sign in
+              </Link>
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function ProviderButton({ icon, label }: { icon: string; label: string }) {
+  return (
+    <button
+      className="flex h-12 items-center justify-center gap-2 rounded-xl border border-[#d8e6ef] bg-white px-4 text-sm font-black text-[#12304a] transition hover:-translate-y-0.5 hover:border-[#7eb8df] hover:bg-[#f4f9fc] active:translate-y-0"
+      type="button"
+    >
+      <i className={`bi ${icon}`} aria-hidden="true" />
+      {label}
+    </button>
+  );
+}
+
+function ModeButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition ${
+        active
+          ? "bg-white text-[#12304a] shadow-sm"
+          : "text-[#657b8b] hover:bg-white/70 hover:text-[#12304a]"
+      }`}
+      type="button"
+      onClick={onClick}
+    >
+      <i className={`bi ${icon}`} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function Field({
+  actionIcon,
+  icon,
+  label,
+  onAction,
+  placeholder,
+  type,
+}: {
+  actionIcon?: string;
+  icon: string;
+  label: string;
+  onAction?: () => void;
+  placeholder: string;
+  type: string;
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm font-black text-[#12304a]">{label}</span>
+      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 transition focus-within:border-[#7eb8df] focus-within:ring-2 focus-within:ring-[#a9d8f5]/40">
+        <i className={`bi ${icon} text-lg text-[#657b8b]`} aria-hidden="true" />
+        <input
+          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+          placeholder={placeholder}
+          type={type}
+        />
+        {actionIcon ? (
+          <button
+            className="text-lg text-[#657b8b] transition hover:text-[#12304a]"
+            type="button"
+            aria-label="Toggle password visibility"
+            onClick={onAction}
+          >
+            <i className={`bi ${actionIcon}`} aria-hidden="true" />
+          </button>
+        ) : null}
+      </span>
+    </label>
+  );
+}
