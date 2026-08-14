@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 type User = {
   id: string;
@@ -9,7 +9,9 @@ type User = {
 
 type AuthContextValue = {
   user: User | null;
-  setUser: (u: User | null) => void;
+  token: string | null;
+  setAuth: (user: User | null, token?: string | null) => void;
+  signOut: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -27,20 +29,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   })();
 
-  const [user, setUserState] = useState<User | null>(initial);
+  // also hydrate token
+  const initialToken = (() => {
+    try {
+      const raw = localStorage.getItem("trusiq_token");
+      if (raw) return raw as string;
+    } catch (e) {
+      /* ignore */
+    }
+    return null;
+  })();
 
-  function setUser(u: User | null) {
+  const [user, setUserState] = useState<User | null>(initial);
+  const [token, setTokenState] = useState<string | null>(initialToken);
+
+  function setAuth(u: User | null, t: string | null = null) {
     try {
       if (u) localStorage.setItem("trusiq_current_user", JSON.stringify(u));
       else localStorage.removeItem("trusiq_current_user");
+      if (t) localStorage.setItem("trusiq_token", t);
+      else localStorage.removeItem("trusiq_token");
     } catch (e) {
       /* ignore */
     }
     setUserState(u);
+    setTokenState(t);
+  }
+
+  function signOut() {
+    setAuth(null, null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, token, setAuth, signOut }}>
       {children}
     </AuthContext.Provider>
   );

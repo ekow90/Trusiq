@@ -1,0 +1,25 @@
+{
+  "name": "trusiq-backend",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "db:start": "docker compose --project-name trusiq up -d postgres",
+    "db:stop": "docker compose --project-name trusiq down",
+    "build": "node -e \"['src/server.js','src/app.js','src/db.js','src/routes/auth.js','src/routes/trust.js','src/routes/company.js','src/services/companyService.js','src/services/userService.js'].forEach((file) => { require('node:fs').accessSync(file); require('node:child_process').execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' }); });\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "openai": "^4.104.0",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

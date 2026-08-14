@@ -1,7 +1,42 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export function TrustScorePage() {
+  const [data, setData] = useState<any | null>(null);
+  const { token } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    fetch("/api/trust", { headers })
+      .then((res) => res.json())
+      .then((json) => {
+        if (active) setData(json);
+      })
+      .catch(() => {
+        /* ignore for now */
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  const score = data?.score ?? 8.4;
+  const percentile = data?.percentile ?? 95;
+  const metrics = data?.metrics ?? {
+    reviewAuthenticity: 94,
+    verificationLevel: 85,
+    customerSentiment: 78,
+    businessActivity: 92,
+  };
+  const trajectory: number[] = data?.trajectory ?? [72, 74, 76, 79, 82];
+
   return (
     <div className="min-h-screen bg-[#f4f9fc] text-[#12304a]">
       <div className="trusiq-shell mx-auto max-w-[920px] px-4 py-8">
@@ -26,7 +61,7 @@ export function TrustScorePage() {
                 BLOCKCHAIN VERIFIED
               </div>
               <div className="text-xs rounded-full border border-[#e6f0fb] bg-[#eef6ff] px-3 py-1 text-[#1b6fcf] font-black">
-                Top 5%
+                Top {percentile}%
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
@@ -35,7 +70,7 @@ export function TrustScorePage() {
                   id="trust-score-heading"
                   className="text-6xl font-black text-[#1b6fcf]"
                 >
-                  8.4
+                  {score}
                 </div>
                 <div className="mt-1 text-sm uppercase text-[#657b8b]">
                   Exceptional trust
@@ -75,10 +110,10 @@ export function TrustScorePage() {
             <h2 className="mb-4 text-lg font-black">Detailed Breakdown</h2>
             <div className="grid gap-4">
               {[
-                ["Review Authenticity", 94],
-                ["Verification Level", 85],
-                ["Customer Sentiment", 78],
-                ["Business Activity", 92],
+                ["Review Authenticity", metrics.reviewAuthenticity],
+                ["Verification Level", metrics.verificationLevel],
+                ["Customer Sentiment", metrics.customerSentiment],
+                ["Business Activity", metrics.businessActivity],
               ].map(([label, value]) => (
                 <div key={String(label)} className="grid gap-2">
                   <div className="flex items-center justify-between text-sm text-[#657b8b]">
@@ -112,7 +147,7 @@ export function TrustScorePage() {
               className="h-40 w-full rounded-lg border border-dashed border-[#e6eef6] bg-gradient-to-b from-white to-[#fbfdff] p-4"
             >
               <div className="flex h-full items-end gap-2">
-                {[72, 74, 76, 79, 82].map((v, i) => (
+                {trajectory.map((v: number, i: number) => (
                   <div key={i} className="flex-1" aria-hidden="false">
                     <div
                       className="mx-auto h-full rounded-t-md bg-[#1b6fcf]"

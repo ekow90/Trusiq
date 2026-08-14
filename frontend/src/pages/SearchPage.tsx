@@ -1,44 +1,20 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-const businesses = [
-  {
-    slug: "summit-tech-solutions",
-    name: "Summit Tech Solutions",
-    category: "IT Services",
-    location: "Downtown, Seattle",
-    score: 94,
-    badge: "Blockchain Verified",
-    details: "Consistent high marks for delivery",
-  },
-  {
-    slug: "oceanic-fine-dining",
-    name: "Oceanic Fine Dining",
-    category: "Restaurants",
-    location: "Waterfront Area",
-    score: 82,
-    badge: "Verified Reviews",
-    details: "Highly rated for service and atmosphere",
-  },
-  {
-    slug: "green-horizon-landsc",
-    name: "Green Horizon Landsc",
-    category: "Home Services",
-    location: "Bellevue District",
-    score: 68,
-    badge: "Review Quality",
-    details: "Trusted by local homeowners for reliability",
-  },
-  {
-    slug: "velocity-auto-rep",
-    name: "Velocity Auto Rep",
-    category: "Services",
-    location: "Industrial Way",
-    score: 89,
-    badge: "Top Trust Score",
-    details: "Fast turnaround with verified customer satisfaction",
-  },
-];
+type BusinessRecord = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  location: string;
+  score: number;
+  rating: number;
+  reviewsCount: number;
+  description?: string;
+  website?: string;
+};
+
+const emptyBusinesses: BusinessRecord[] = [];
 
 const categories = ["All Categories", "Restaurants", "Services", "IT Services"];
 const sortOptions = ["Relevance", "Score", "Distance"];
@@ -51,6 +27,42 @@ export function SearchPage() {
   const [activeCategory, setActiveCategory] = useState("All Categories");
   const [activeSort, setActiveSort] = useState("Relevance");
   const [verifiedOnly, setVerifiedOnly] = useState(true);
+  const [businesses, setBusinesses] =
+    useState<BusinessRecord[]>(emptyBusinesses);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadBusinesses() {
+      try {
+        const response = await fetch("/api/companies");
+        if (!response.ok) {
+          throw new Error("Failed to fetch companies");
+        }
+        const data = await response.json();
+        const mapped = Array.isArray(data.companies)
+          ? data.companies.map((company: any) => ({
+              id: company.id,
+              slug: company.slug,
+              name: company.name,
+              category: company.category || "General",
+              location: company.location || "Unknown location",
+              score: Number(company.trustScore || 0),
+              rating: Number(company.rating || 0),
+              reviewsCount: Number(company.reviewsCount || 0),
+              description: company.description,
+              website: company.website,
+            }))
+          : [];
+        setBusinesses(mapped);
+      } catch (error) {
+        setBusinesses([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadBusinesses();
+  }, []);
 
   const filteredResults = useMemo(
     () =>
@@ -233,10 +245,14 @@ export function SearchPage() {
             </div>
 
             <div className="grid gap-4">
-              {filteredResults.length > 0 ? (
+              {loading ? (
+                <div className="rounded-[24px] border border-[#d8e6ef] bg-white p-8 text-center text-sm font-bold text-[#657b8b]">
+                  Loading businesses…
+                </div>
+              ) : filteredResults.length > 0 ? (
                 filteredResults.map((business) => (
                   <article
-                    key={business.name}
+                    key={business.id || business.slug}
                     className="grid gap-5 rounded-[32px] border border-[#e8eef5] bg-white p-6 shadow-[0_18px_40px_rgba(18,48,74,0.05)] sm:grid-cols-[120px_1fr] sm:items-center"
                   >
                     <button
@@ -267,11 +283,12 @@ export function SearchPage() {
                         </p>
                       </div>
                       <p className="text-sm font-semibold leading-6 text-[#5b6c7b]">
-                        {business.details}
+                        {business.description ||
+                          "Business profile is live and ready for customer trust signals."}
                       </p>
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="rounded-full bg-[#eef4ff] px-3 py-2 text-xs font-black text-[#2f68f1]">
-                          {business.badge}
+                          {business.score >= 80 ? "Verified" : "Growing trust"}
                         </span>
                         <button
                           type="button"

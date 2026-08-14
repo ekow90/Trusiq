@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 type AccountType = "customer" | "business";
 
@@ -86,9 +87,19 @@ const trustBenefits = [
 
 export function RegistrationPage() {
   const navigate = useNavigate();
+  const { setAuth } = useAuth();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [businessCategory, setBusinessCategory] = useState("");
+  const [businessLocation, setBusinessLocation] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [businessWebsite, setBusinessWebsite] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const copy = accountCopy[accountType];
 
   return (
@@ -200,30 +211,330 @@ export function RegistrationPage() {
 
             <form
               className="mt-6 grid gap-5"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
-                navigate("/login");
+
+                const effectiveBusinessName =
+                  accountType === "business" ? businessName || name : name;
+
+                if (!name || !email || !password) {
+                  alert("Please fill in all required fields.");
+                  return;
+                }
+
+                if (
+                  accountType === "business" &&
+                  (!effectiveBusinessName ||
+                    !businessCategory ||
+                    !businessLocation)
+                ) {
+                  alert(
+                    "Please complete the business name, category, and location.",
+                  );
+                  return;
+                }
+
+                if (password !== confirmPassword) {
+                  alert("Passwords do not match.");
+                  return;
+                }
+
+                try {
+                  const resp = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      name,
+                      email,
+                      password,
+                      roles:
+                        accountType === "business" ? ["owner"] : ["customer"],
+                    }),
+                  });
+
+                  if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    alert(err.error || "Registration failed");
+                    return;
+                  }
+
+                  const body = await resp.json();
+                  setAuth(body.user, body.token);
+
+                  if (accountType === "business") {
+                    const companyResponse = await fetch(
+                      "/api/companies/register",
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${body.token}`,
+                        },
+                        body: JSON.stringify({
+                          name: effectiveBusinessName,
+                          category: businessCategory || "General",
+                          location: businessLocation || "Not set yet",
+                          website: businessWebsite || "",
+                          phone: businessPhone || "",
+                          description:
+                            "Business profile created during signup.",
+                        }),
+                      },
+                    );
+
+                    if (!companyResponse.ok) {
+                      const companyErr = await companyResponse
+                        .json()
+                        .catch(() => ({}));
+                      console.warn(
+                        "Business profile creation failed:",
+                        companyErr.error || companyResponse.statusText,
+                      );
+                    }
+                  }
+
+                  navigate(
+                    body.user.roles.includes("owner")
+                      ? "/dashboard"
+                      : "/search",
+                  );
+                } catch (error) {
+                  alert("Registration error");
+                }
               }}
             >
-              {copy.fields.map((field) => (
-                <Field key={field.label} {...field} />
-              ))}
-              <Field
-                actionIcon={showPassword ? "bi-eye" : "bi-eye-slash"}
-                icon="bi-lock"
-                label="Password"
-                placeholder="Create a strong password"
-                type={showPassword ? "text" : "password"}
-                onAction={() => setShowPassword((value) => !value)}
-              />
-              <Field
-                actionIcon={showConfirmPassword ? "bi-eye" : "bi-eye-slash"}
-                icon="bi-shield-check"
-                label="Confirm password"
-                placeholder="Repeat your password"
-                type={showConfirmPassword ? "text" : "password"}
-                onAction={() => setShowConfirmPassword((value) => !value)}
-              />
+              <div className="grid gap-5">
+                {accountType === "business" ? (
+                  <>
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Owner name
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-person text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Jane Mensah"
+                          type="text"
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                        />
+                      </span>
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Business name
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-building text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Kora Kitchen"
+                          type="text"
+                          value={businessName}
+                          onChange={(event) =>
+                            setBusinessName(event.target.value)
+                          }
+                        />
+                      </span>
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Business category
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-tags text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Restaurant, retail, services..."
+                          type="text"
+                          value={businessCategory}
+                          onChange={(event) =>
+                            setBusinessCategory(event.target.value)
+                          }
+                        />
+                      </span>
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Business location
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-geo-alt text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="East Legon, Accra"
+                          type="text"
+                          value={businessLocation}
+                          onChange={(event) =>
+                            setBusinessLocation(event.target.value)
+                          }
+                        />
+                      </span>
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Phone number
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-telephone text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="+233 24 000 0000"
+                          type="tel"
+                          value={businessPhone}
+                          onChange={(event) =>
+                            setBusinessPhone(event.target.value)
+                          }
+                        />
+                      </span>
+                    </label>
+
+                    <label className="grid gap-2">
+                      <span className="text-sm font-black text-[#12304a]">
+                        Website
+                      </span>
+                      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                        <i
+                          className="bi bi-globe text-lg text-[#657b8b]"
+                          aria-hidden="true"
+                        />
+                        <input
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="https://yourbusiness.com"
+                          type="url"
+                          value={businessWebsite}
+                          onChange={(event) =>
+                            setBusinessWebsite(event.target.value)
+                          }
+                        />
+                      </span>
+                    </label>
+                  </>
+                ) : (
+                  <label className="grid gap-2">
+                    <span className="text-sm font-black text-[#12304a]">
+                      Full name
+                    </span>
+                    <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                      <i
+                        className="bi bi-person text-lg text-[#657b8b]"
+                        aria-hidden="true"
+                      />
+                      <input
+                        className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                        placeholder="John Doe"
+                        type="text"
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                      />
+                    </span>
+                  </label>
+                )}
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-black text-[#12304a]">
+                    Email address
+                  </span>
+                  <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                    <i
+                      className="bi bi-envelope text-lg text-[#657b8b]"
+                      aria-hidden="true"
+                    />
+                    <input
+                      className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                      placeholder={
+                        accountType === "business"
+                          ? "hello@business.com"
+                          : "john@example.com"
+                      }
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-black text-[#12304a]">
+                  Password
+                </span>
+                <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                  <i
+                    className="bi bi-lock text-lg text-[#657b8b]"
+                    aria-hidden="true"
+                  />
+                  <input
+                    className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                    placeholder="Create a strong password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    className="text-lg text-[#657b8b] transition hover:text-[#12304a]"
+                    type="button"
+                    aria-label="Toggle password visibility"
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    <i
+                      className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </span>
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-black text-[#12304a]">
+                  Confirm password
+                </span>
+                <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4">
+                  <i
+                    className="bi bi-shield-check text-lg text-[#657b8b]"
+                    aria-hidden="true"
+                  />
+                  <input
+                    className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                    placeholder="Repeat your password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                  <button
+                    className="text-lg text-[#657b8b] transition hover:text-[#12304a]"
+                    type="button"
+                    aria-label="Toggle confirm password visibility"
+                    onClick={() => setShowConfirmPassword((value) => !value)}
+                  >
+                    <i
+                      className={`bi ${showConfirmPassword ? "bi-eye" : "bi-eye-slash"}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </span>
+              </label>
+
               <button
                 className="mt-2 flex h-14 w-full items-center justify-center rounded-3xl bg-[#12304a] text-base font-black text-white shadow-[0_18px_32px_rgba(18,48,74,0.18)] transition hover:bg-[#0f283f] active:translate-y-0.5"
                 type="submit"
@@ -296,45 +607,5 @@ function ModeButton({
       <i className={`bi ${icon}`} aria-hidden="true" />
       <span>{label}</span>
     </button>
-  );
-}
-
-function Field({
-  actionIcon,
-  icon,
-  label,
-  onAction,
-  placeholder,
-  type,
-}: {
-  actionIcon?: string;
-  icon: string;
-  label: string;
-  onAction?: () => void;
-  placeholder: string;
-  type: string;
-}) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-sm font-black text-[#12304a]">{label}</span>
-      <span className="flex h-12 items-center gap-3 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 transition focus-within:border-[#7eb8df] focus-within:ring-2 focus-within:ring-[#a9d8f5]/40">
-        <i className={`bi ${icon} text-lg text-[#657b8b]`} aria-hidden="true" />
-        <input
-          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
-          placeholder={placeholder}
-          type={type}
-        />
-        {actionIcon ? (
-          <button
-            className="text-lg text-[#657b8b] transition hover:text-[#12304a]"
-            type="button"
-            aria-label="Toggle password visibility"
-            onClick={onAction}
-          >
-            <i className={`bi ${actionIcon}`} aria-hidden="true" />
-          </button>
-        ) : null}
-      </span>
-    </label>
   );
 }

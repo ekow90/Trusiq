@@ -1,41 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const businesses = [
-  {
-    slug: "kora-kitchen",
-    name: "Kora Kitchen",
-    category: "Restaurant",
-    location: "East Legon, Accra",
-    score: "94.8",
-    reviews: "186",
-    status: "High confidence",
-    icon: "bi-cup-hot",
-    tone: "bg-[#e2f1fa] text-[#35749a]",
-  },
-  {
-    slug: "northstar-repairs",
-    name: "Northstar Repairs",
-    category: "Home services",
-    location: "Osu, Accra",
-    score: "91.6",
-    reviews: "74",
-    status: "Verified visits",
-    icon: "bi-tools",
-    tone: "bg-[#dceef8] text-[#316b94]",
-  },
-  {
-    slug: "mosaic-learning",
-    name: "Mosaic Learning",
-    category: "Education",
-    location: "Kumasi",
-    score: "89.9",
-    reviews: "128",
-    status: "Growing trust",
-    icon: "bi-mortarboard",
-    tone: "bg-[#e3f3f7] text-[#357c86]",
-  },
-];
+type BusinessSpotlight = {
+  slug: string;
+  name: string;
+  category: string;
+  location: string;
+  score: string;
+  reviews: string;
+  status: string;
+  icon: string;
+  tone: string;
+};
+
+const placeholderBusinesses: BusinessSpotlight[] = [];
 
 const signals = [
   {
@@ -57,6 +35,37 @@ export function RedesignedHomePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [businesses, setBusinesses] = useState<BusinessSpotlight[]>(
+    placeholderBusinesses,
+  );
+
+  useEffect(() => {
+    async function loadBusinesses() {
+      try {
+        const response = await fetch("/api/companies");
+        if (!response.ok) throw new Error("Failed to fetch companies");
+        const data = await response.json();
+        const mapped = (data.companies || []).map((company: any) => ({
+          slug: company.slug,
+          name: company.name,
+          category: company.category || "General",
+          location: company.location || "Location unavailable",
+          score: String(Number(company.trustScore || 0)),
+          reviews: String(Number(company.reviewsCount || 0)),
+          status:
+            company.trustScore >= 80 ? "High confidence" : "Growing trust",
+          icon: "bi-building",
+          tone: "bg-[#e2f1fa] text-[#35749a]",
+        }));
+        setBusinesses(mapped);
+      } catch (error) {
+        setBusinesses([]);
+      }
+    }
+
+    void loadBusinesses();
+  }, []);
+
   const search = query.toLowerCase();
   const visibleBusinesses = businesses.filter(
     (business) =>
