@@ -58,7 +58,7 @@ async function createUser({
 async function findUserByEmail(email) {
   const db = await getDb();
   const result = await db.query(
-    `SELECT id, email, password_hash, full_name AS name, role, roles, company_id
+    `SELECT id, email, password_hash, full_name AS name, role, roles, company_id, account_status
      FROM users WHERE email = $1`,
     [String(email).trim().toLowerCase()],
   );
@@ -72,6 +72,7 @@ async function findUserByEmail(email) {
     name: row.name,
     roles: parseRoles(row.roles || row.role),
     companyId: row.company_id,
+    accountStatus: row.account_status,
     passwordHash: row.password_hash,
   };
 }

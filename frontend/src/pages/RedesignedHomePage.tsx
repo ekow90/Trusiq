@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 type BusinessSpotlight = {
+  id?: string;
   slug: string;
   name: string;
   category: string;
@@ -46,6 +47,7 @@ export function RedesignedHomePage() {
         if (!response.ok) throw new Error("Failed to fetch companies");
         const data = await response.json();
         const mapped = (data.companies || []).map((company: any) => ({
+          id: company.id || company.slug,
           slug: company.slug,
           name: company.name,
           category: company.category || "General",
@@ -389,7 +391,7 @@ export function RedesignedHomePage() {
                 {visibleBusinesses.length ? (
                   visibleBusinesses.map((business) => (
                     <article
-                      key={business.name}
+                      key={business.id || business.slug || business.name}
                       className="group rounded-2xl border border-[#dfe5da] bg-white p-5 hover:-translate-y-1 hover:border-[#b9d98a] hover:shadow-[0_18px_40px_rgba(31,47,32,0.09)]"
                     >
                       <div className="flex items-start justify-between">

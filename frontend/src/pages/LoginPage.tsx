@@ -1,9 +1,10 @@
 ﻿import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const { setAuth } = useAuth();
@@ -11,6 +12,15 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginRole, setLoginRole] = useState<"customer" | "owner">("customer");
+  const returnTo = searchParams.get("returnTo");
+
+  function navigateAfterLogin(user: { roles: string[] }) {
+    if (returnTo && returnTo.startsWith("/")) {
+      navigate(returnTo);
+    } else if (user.roles.includes("admin")) navigate("/admin");
+    else if (user.roles.includes("owner")) navigate("/dashboard");
+    else navigate("/search");
+  }
 
   async function handleSocialLogin(provider: "google" | "microsoft" | "apple") {
     try {
@@ -34,9 +44,7 @@ export function LoginPage() {
 
       const body = await resp.json();
       setAuth(body.user, body.token);
-      if (body.user.roles.includes("admin")) navigate("/admin");
-      else if (body.user.roles.includes("owner")) navigate("/dashboard");
-      else navigate("/search");
+      navigateAfterLogin(body.user);
     } catch (error) {
       alert(`Unable to continue with ${provider} sign-in`);
     }
@@ -136,11 +144,7 @@ export function LoginPage() {
                   const body = await resp.json();
                   // body: { token, user }
                   setAuth(body.user, body.token);
-                  // navigate based on role
-                  if (body.user.roles.includes("admin")) navigate("/admin");
-                  else if (body.user.roles.includes("owner"))
-                    navigate("/dashboard");
-                  else navigate("/search");
+                  navigateAfterLogin(body.user);
                 } catch (e) {
                   // fallback
                   alert("Login error");
@@ -264,6 +268,13 @@ export function LoginPage() {
                 Create one
               </Link>
             </p>
+            <Link
+              to="/admin-login"
+              className="mx-auto mt-7 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c8d5df] transition hover:text-[#657b8b]"
+              aria-label="Administrator sign in"
+            >
+              <i className="bi bi-shield-lock" aria-hidden="true" /> Admin
+            </Link>
           </section>
         </main>
       </div>

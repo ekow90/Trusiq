@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 type CompanyProfile = {
   id: string;
@@ -10,12 +10,14 @@ type CompanyProfile = {
   trustScore: number;
   rating: number;
   reviewsCount: number;
+  verifiedReviewPercentage: number;
   description: string;
   website?: string;
   phone?: string;
 };
 
 export function BusinessProfilePage() {
+  const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [business, setBusiness] = useState<CompanyProfile | null>(null);
   const [summary, setSummary] = useState<string>(
@@ -28,6 +30,13 @@ export function BusinessProfilePage() {
   const [riskFlags, setRiskFlags] = useState<string[]>([
     "No review data available yet.",
   ]);
+  const locationSearch = useLocation();
+  const searchParams = new URLSearchParams(locationSearch.search);
+  const mapParam =
+    searchParams.get("map") === "1" || searchParams.get("map") === "true";
+  const [activeTab, setActiveTab] = useState<string>(
+    mapParam ? "Map" : "Reviews",
+  );
 
   useEffect(() => {
     async function loadBusiness() {
@@ -50,6 +59,9 @@ export function BusinessProfilePage() {
           trustScore: Number(data.company.trustScore || 0),
           rating: Number(data.company.rating || 0),
           reviewsCount: Number(data.company.reviewsCount || 0),
+          verifiedReviewPercentage: Number(
+            data.company.verifiedReviewPercentage || 0,
+          ),
           description:
             data.company.description || "No business description yet.",
           website: data.company.website || "",
@@ -160,21 +172,27 @@ export function BusinessProfilePage() {
                         </p>
                       </div>
                     </div>
-                    <div className="hidden items-center gap-3 rounded-full bg-white/90 px-4 py-3 shadow-sm sm:flex">
-                      <button
-                        type="button"
+                    <div className="flex items-center gap-2 rounded-full bg-white/90 px-2 py-2 shadow-sm sm:gap-3 sm:px-4 sm:py-3">
+                      <a
+                        href={
+                          business.phone ? `tel:${business.phone}` : undefined
+                        }
+                        aria-disabled={!business.phone}
                         className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#12304a] text-white transition hover:bg-[#1f4b70]"
                         aria-label="Call company"
                       >
                         <i className="bi bi-telephone" aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
+                      </a>
+                      <a
+                        href={business.website || undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-disabled={!business.website}
                         className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#fff] text-[#12304a] transition hover:bg-[#eef4ff]"
                         aria-label="Visit website"
                       >
                         <i className="bi bi-globe" aria-hidden="true" />
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -203,6 +221,17 @@ export function BusinessProfilePage() {
                       </p>
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#657b8b]">
                         {business.reviewsCount} reviews
+                      </p>
+                    </div>
+                    <div className="rounded-[24px] bg-white px-4 py-3 text-center shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#7d97ad]">
+                        Verified reviews
+                      </p>
+                      <p className="mt-3 text-3xl font-black text-[#2f68f1]">
+                        {business.verifiedReviewPercentage}%
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#657b8b]">
+                        QR / visit verified
                       </p>
                     </div>
                   </div>
@@ -336,11 +365,12 @@ export function BusinessProfilePage() {
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["All", "Latest", "Highest", "Lowest"].map((tab) => (
+                    {["Reviews", "Map", "Details"].map((tab) => (
                       <button
                         key={tab}
                         type="button"
-                        className="rounded-full border border-[#d8e6ef] bg-[#f8fbff] px-4 py-2 text-xs font-black text-[#12304a] transition hover:border-[#12304a] hover:bg-white"
+                        onClick={() => setActiveTab(tab)}
+                        className={`rounded-full border border-[#d8e6ef] px-4 py-2 text-xs font-black text-[#12304a] transition ${activeTab === tab ? "bg-white" : "bg-[#f8fbff] hover:bg-white"}`}
                       >
                         {tab}
                       </button>
@@ -349,24 +379,64 @@ export function BusinessProfilePage() {
                 </div>
 
                 <div className="mt-5 space-y-5">
-                  <div className="rounded-[28px] border border-[#e3ebf3] bg-[#fafcff] p-6 text-sm font-semibold text-[#5b6c7b]">
-                    No customer reviews have been submitted for this business
-                    yet. Once reviews are added, they will appear here with
-                    trust and authenticity analysis.
-                  </div>
-                </div>
+                  {activeTab === "Map" ? (
+                    <div className="rounded-[12px] overflow-hidden border border-[#e3ebf3] bg-white">
+                      {business.location ? (
+                        <iframe
+                          title="business-map"
+                          width="100%"
+                          height={400}
+                          src={`https://www.google.com/maps?q=${encodeURIComponent(
+                            business.location,
+                          )}&output=embed`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="p-6 text-sm text-[#657b8b]">
+                          Location not provided for this business.
+                        </div>
+                      )}
+                    </div>
+                  ) : activeTab === "Details" ? (
+                    <div className="rounded-[28px] border border-[#e3ebf3] bg-[#fafcff] p-6 text-sm font-semibold text-[#5b6c7b]">
+                      <p className="font-black">Website</p>
+                      <p className="mt-2 text-sm text-[#12304a]">
+                        {business.website || "Not provided"}
+                      </p>
+                      <p className="mt-4 font-black">Phone</p>
+                      <p className="mt-2 text-sm text-[#12304a]">
+                        {business.phone || "Not provided"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-[28px] border border-[#e3ebf3] bg-[#fafcff] p-6 text-sm font-semibold text-[#5b6c7b]">
+                      {business.reviewsCount ? (
+                        <p>{business.reviewsCount} reviews will appear here.</p>
+                      ) : (
+                        <p>
+                          No customer reviews have been submitted for this
+                          business yet. Once reviews are added, they will appear
+                          here with trust and authenticity analysis.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                <div className="mt-6 flex items-center justify-between rounded-[28px] bg-[#f4f9fc] px-5 py-4 text-sm font-semibold text-[#12304a] shadow-sm">
-                  <p>
-                    {business.reviewsCount} reviews · {business.rating || 0}{" "}
-                    average
-                  </p>
-                  <button
-                    type="button"
-                    className="rounded-full bg-[#12304a] px-4 py-2 text-sm font-black text-white transition hover:bg-[#1f4b70]"
-                  >
-                    Leave review
-                  </button>
+                  <div className="mt-6 flex items-center justify-between rounded-[28px] bg-[#f4f9fc] px-5 py-4 text-sm font-semibold text-[#12304a] shadow-sm">
+                    <p>
+                      {business.reviewsCount} reviews · {business.rating || 0}{" "}
+                      average
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/review?business=${business.slug}`)
+                      }
+                      className="rounded-full bg-[#12304a] px-4 py-2 text-sm font-black text-white transition hover:bg-[#1f4b70]"
+                    >
+                      Leave review
+                    </button>
+                  </div>
                 </div>
               </section>
             </section>
@@ -426,8 +496,10 @@ export function BusinessProfilePage() {
                 <div className="mt-6 grid gap-3">
                   <button
                     type="button"
+                    onClick={() => navigate(`/business/${business.slug}/qr`)}
                     className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-[#12304a] px-5 text-sm font-black text-white transition hover:bg-[#1f4b70]"
                   >
+                    <i className="bi bi-qr-code" aria-hidden="true" />
                     Send invite
                   </button>
                   <button

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -94,6 +94,14 @@ export function RegistrationPage() {
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [businessCategory, setBusinessCategory] = useState("");
+  const [categories, setCategories] = useState<string[]>([
+    "General",
+    "Restaurants",
+    "Services",
+    "IT Services",
+    "Retail",
+  ]);
+  const [customCategory, setCustomCategory] = useState("");
   const [businessLocation, setBusinessLocation] = useState("");
   const [businessPhone, setBusinessPhone] = useState("");
   const [businessWebsite, setBusinessWebsite] = useState("");
@@ -101,6 +109,21 @@ export function RegistrationPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const copy = accountCopy[accountType];
+
+  useEffect(() => {
+    (async function loadCategories() {
+      try {
+        const resp = await fetch("/api/companies/categories");
+        if (!resp.ok) return;
+        const json = await resp.json();
+        if (Array.isArray(json.categories) && json.categories.length) {
+          setCategories(json.categories);
+        }
+      } catch (e) {
+        // ignore and keep defaults
+      }
+    })();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f4f9fc] text-[#12304a]">
@@ -262,6 +285,10 @@ export function RegistrationPage() {
                   setAuth(body.user, body.token);
 
                   if (accountType === "business") {
+                    const chosenCategory =
+                      businessCategory === "Other"
+                        ? customCategory || "General"
+                        : businessCategory || "General";
                     const companyResponse = await fetch(
                       "/api/companies/register",
                       {
@@ -272,7 +299,7 @@ export function RegistrationPage() {
                         },
                         body: JSON.stringify({
                           name: effectiveBusinessName,
-                          category: businessCategory || "General",
+                          category: chosenCategory,
                           location: businessLocation || "Not set yet",
                           website: businessWebsite || "",
                           phone: businessPhone || "",
@@ -355,16 +382,36 @@ export function RegistrationPage() {
                           className="bi bi-tags text-lg text-[#657b8b]"
                           aria-hidden="true"
                         />
-                        <input
-                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
-                          placeholder="Restaurant, retail, services..."
-                          type="text"
-                          value={businessCategory}
-                          onChange={(event) =>
-                            setBusinessCategory(event.target.value)
-                          }
-                        />
+                        <select
+                          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none"
+                          value={businessCategory || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "__other__") {
+                              setBusinessCategory("Other");
+                            } else {
+                              setBusinessCategory(v);
+                              setCustomCategory("");
+                            }
+                          }}
+                        >
+                          <option value="">Select category</option>
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                          <option value="__other__">Other</option>
+                        </select>
                       </span>
+                      {businessCategory === "Other" && (
+                        <input
+                          className="mt-2 min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b] rounded-xl border border-[#d8e6ef] px-4 py-2"
+                          placeholder="Type a custom category"
+                          value={customCategory}
+                          onChange={(e) => setCustomCategory(e.target.value)}
+                        />
+                      )}
                     </label>
 
                     <label className="grid gap-2">

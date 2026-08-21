@@ -14,7 +14,8 @@ async function findCompanyBySlug(slug) {
   await initDb();
   const db = await getDb();
   const result = await db.query(
-    `SELECT * FROM businesses WHERE lower(slug) = lower($1) OR lower(business_name) = lower($1) LIMIT 1`,
+    `SELECT b.*, COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.verified_visit = TRUE), 0) AS verified_reviews_count
+     FROM businesses b WHERE lower(b.slug) = lower($1) OR lower(b.business_name) = lower($1) LIMIT 1`,
     [String(slug).trim()],
   );
 
@@ -38,6 +39,16 @@ async function findCompanyBySlug(slug) {
     trustScore: Number(row.trust_score ?? 0),
     rating: Number(row.rating ?? 0),
     reviewsCount: Number(row.reviews_count ?? 0),
+    verifiedReviewsCount: Number(row.verified_reviews_count ?? 0),
+    verifiedReviewPercentage: row.reviews_count
+      ? Number(
+          (
+            (Number(row.verified_reviews_count ?? 0) /
+              Number(row.reviews_count)) *
+            100
+          ).toFixed(1),
+        )
+      : 0,
     createdAt: row.created_at,
   };
 }
@@ -204,7 +215,7 @@ async function listCompanies(options = {}) {
   }
 
   // Build query
-  let sql = "SELECT * FROM businesses";
+  let sql = `SELECT b.*, COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.verified_visit = TRUE), 0) AS verified_reviews_count FROM businesses b`;
   if (clauses.length) {
     sql += " WHERE " + clauses.join(" AND ");
   }
@@ -236,6 +247,16 @@ async function listCompanies(options = {}) {
     trustScore: Number(row.trust_score ?? 0),
     rating: Number(row.rating ?? 0),
     reviewsCount: Number(row.reviews_count ?? 0),
+    verifiedReviewsCount: Number(row.verified_reviews_count ?? 0),
+    verifiedReviewPercentage: row.reviews_count
+      ? Number(
+          (
+            (Number(row.verified_reviews_count ?? 0) /
+              Number(row.reviews_count)) *
+            100
+          ).toFixed(1),
+        )
+      : 0,
     createdAt: row.created_at,
   }));
 }

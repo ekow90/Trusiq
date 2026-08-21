@@ -16,7 +16,9 @@ function authenticateToken(req, res, next) {
   const token = parts[1];
 
   try {
-    const payload = jwt.verify(token, SECRET);
+    const payload = jwt.verify(token, SECRET, {
+      issuer: ["trusiq", "trusiq-admin"],
+    });
     req.user = payload;
     next();
   } catch (error) {

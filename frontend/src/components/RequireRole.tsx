@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function RequireRole({
@@ -11,10 +11,14 @@ export function RequireRole({
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // If no user, redirect to login
   if (!user) {
-    navigate("/login", { replace: true });
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`, {
+      replace: true,
+    });
     return null;
   }
 
