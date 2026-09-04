@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String   @id
+  fullName      String   @map("full_name")
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  phoneNumber   String?  @map("phone_number")
+  profileImage  String?  @map("profile_image")
+  role          String   @default("customer")
+  roles         String?  @default("[]")
+  companyId     String?  @map("company_id")
+  accountStatus String   @default("active") @map("account_status")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  ownedBusinesses   Business[]            @relation("BusinessOwner")
+  reviews           Review[]
+  notifications     Notification[]
+  submittedRequests VerificationRequest[] @relation("VerificationSubmittedBy")
+  reviewedRequests  VerificationRequest[] @relation("VerificationReviewedBy")
+
+  @@map("users")
+}
+
+model Business {
+  id                String   @id
+  ownerId           String?  @map("owner_id")
+  businessName      String   @map("business_name")
+  description       String?
+  category          String   @default("General")
+  phone             String?
+  email             String?
+  website           String?
+  location          String?
+  latitude          Float?
+  longitude         Float?
+  verificationLevel String   @default("unverified") @map("verification_level")
+  trustScore        Float?   @default(0) @map("trust_score")
+  rating            Float?   @default(0)
+  reviewsCount      Int?     @default(0) @map("reviews_count")
+  slug              String?  @unique
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+
+  owner                User?                 @relation("BusinessOwner", fields: [ownerId], references: [id])
+  reviews              Review[]
+  trustScores          TrustScore[]          @relation("TrustScoreBusiness")
+  verificationRequests VerificationRequest[]
+  documents            BusinessDocument[]
+
+  @@map("businesses")
+}
+
+model Review {
+  id            String   @id
+  businessId    String   @map("business_id")
+  userId        String   @map("user_id")
+  rating        Int
+  reviewText    String?  @map("review_text")
+  verifiedVisit Boolean  @default(false) @map("verified_visit")
+  reviewStatus  String   @default("active") @map("review_status")
+  reviewHash    String?  @map("review_hash")
+  hashMetadata  Json?    @default("{}") @map("hash_metadata")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model TrustScore {
+  id                  String   @id
+  companyId           String   @unique @map("company_id")
+  businessId          String?  @map("business_id")
+  score               Float
+  percentile          Int?     @default(0)
+  averageRating       Float?   @map("average_rating")
+  verifiedReviewRatio Float?   @map("verified_review_ratio")
+  aiAuthenticityScore Float?   @map("ai_authenticity_score")
+  metrics             Json?    @default("{}")
+  trajectory          Json?    @default("[]")
+  calculatedAt        DateTime @default(now()) @map("calculated_at")
+  lastUpdated         DateTime @default(now()) @map("last_updated")
+
+  business Business? @relation("TrustScoreBusiness", fields: [businessId], references: [id])
+
+  @@map("trust_scores")
+}
+
+model Notification {
+  id        String   @id
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model VerificationRequest {
+  id            String    @id
+  businessId    String    @map("business_id")
+  submittedById String    @map("submitted_by")
+  requestType   String    @map("request_type")
+  status        String    @default("pending")
+  reviewedById  String?   @map("reviewed_by")
+  submittedAt   DateTime  @default(now()) @map("submitted_at")
+  reviewedAt    DateTime? @map("reviewed_at")
+
+  business    Business @relation(fields: [businessId], references: [id])
+  submittedBy User     @relation("VerificationSubmittedBy", fields: [submittedById], references: [id])
+  reviewedBy  User?    @relation("VerificationReviewedBy", fields: [reviewedById], references: [id])
+
+  @@map("verification_requests")
+}
+
+model BusinessDocument {
+  id           String   @id
+  businessId   String   @map("business_id")
+  documentType String   @map("document_type")
+  documentUrl  String   @map("document_url")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@map("business_documents")
+}
+
+model BlockchainRecord {
+  id              String   @id
+  recordType      String   @map("record_type")
+  referenceId     String   @map("reference_id")
+  hashValue       String?  @map("hash_value")
+  transactionHash String?  @map("transaction_hash")
+  blockNumber     BigInt?  @map("block_number")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("blockchain_records")
+}
+
+model PlatformStats {
+  statKey   String   @id @map("stat_key")
+  statValue BigInt   @default(0) @map("stat_value")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@map("platform_stats")
+}

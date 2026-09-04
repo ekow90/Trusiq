@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
+
+type TrustScoreData = {
+  message?: string;
+  score?: number;
+  percentile?: number;
+  metrics?: {
+    reviewAuthenticity: number;
+    verificationLevel: number;
+    customerSentiment: number;
+    businessActivity: number;
+  };
+  trajectory?: number[];
+};
 
 export function TrustScorePage() {
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<TrustScoreData | null>(null);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -27,15 +40,15 @@ export function TrustScorePage() {
     };
   }, [token]);
 
-  const score = data?.score ?? 8.4;
-  const percentile = data?.percentile ?? 95;
+  const score = data?.score ?? 0;
+  const percentile = data?.percentile ?? 0;
   const metrics = data?.metrics ?? {
-    reviewAuthenticity: 94,
-    verificationLevel: 85,
-    customerSentiment: 78,
-    businessActivity: 92,
+    reviewAuthenticity: 0,
+    verificationLevel: 0,
+    customerSentiment: 0,
+    businessActivity: 0,
   };
-  const trajectory: number[] = data?.trajectory ?? [72, 74, 76, 79, 82];
+  const trajectory: number[] = data?.trajectory ?? [];
 
   return (
     <div className="min-h-screen bg-[#edf5fb] text-[#12304a]">
@@ -93,7 +106,11 @@ export function TrustScorePage() {
                         {score.toFixed(1)}
                       </div>
                       <div className="mt-1 text-[11px] font-black uppercase tracking-[0.2em] text-[#7d97ad]">
-                        Excellent
+                        {score > 0
+                          ? score >= 80
+                            ? "Strong"
+                            : "Building"
+                          : "No data yet"}
                       </div>
                     </div>
                   </div>
@@ -107,8 +124,8 @@ export function TrustScorePage() {
                     Trust beyond star ratings
                   </p>
                   <p className="mt-3 text-sm leading-7 text-[#5d7290]">
-                    Verified score for TechNova Solutions. Last calculated 2
-                    hours ago.
+                    {data?.message ||
+                      "Trust data will appear here as reviews, verification, and business activity are recorded."}
                   </p>
                 </div>
               </div>
@@ -148,21 +165,27 @@ export function TrustScorePage() {
             </h2>
             <div className="rounded-[24px] border border-[#edf2f8] bg-[#f9fbff] p-4">
               <div className="flex h-48 items-end gap-3">
-                {trajectory.map((value, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-1 flex-col items-center justify-end gap-2"
-                  >
+                {trajectory.length ? (
+                  trajectory.map((value, index) => (
                     <div
-                      className="w-full rounded-t-[16px] bg-gradient-to-t from-[#1b6fcf] to-[#6ea9ff] shadow-[0_16px_25px_rgba(37,99,235,0.2)]"
-                      style={{ height: `${(value / 100) * 100}%` }}
-                      aria-label={`Month ${index + 1}: ${value}`}
-                    />
-                    <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#7d97ad]">
-                      {["Jan", "Feb", "Mar", "Apr", "May"][index]}
-                    </span>
-                  </div>
-                ))}
+                      key={index}
+                      className="flex flex-1 flex-col items-center justify-end gap-2"
+                    >
+                      <div
+                        className="w-full rounded-t-[16px] bg-gradient-to-t from-[#1b6fcf] to-[#6ea9ff] shadow-[0_16px_25px_rgba(37,99,235,0.2)]"
+                        style={{ height: `${(value / 100) * 100}%` }}
+                        aria-label={`Month ${index + 1}: ${value}`}
+                      />
+                      <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#7d97ad]">
+                        {["Jan", "Feb", "Mar", "Apr", "May"][index]}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="flex h-48 items-center justify-center text-sm font-semibold text-[#647b8b]">
+                    No trust history yet.
+                  </p>
+                )}
               </div>
             </div>
           </section>
@@ -170,18 +193,18 @@ export function TrustScorePage() {
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="rounded-[30px] bg-gradient-to-br from-[#0f2331] via-[#12304a] to-[#1d3d67] p-5 text-white shadow-[0_28px_70px_rgba(18,48,74,0.24)] sm:p-6">
               <p className="text-[11px] font-black uppercase tracking-[0.2em] text-sky-200">
-                Secured via Polygon
+                Trust integrity
               </p>
               <h3 className="mt-4 text-3xl font-black tracking-[-0.05em]">
-                Immutable Trust Audit
+                Transparent trust audit
               </h3>
               <div className="mt-5 rounded-[18px] border border-white/10 bg-[#0b1a26]/60 p-3 text-xs font-semibold text-sky-100">
-                TX: 0x8a3f...9e21 | Verified at block #42,891,012
+                Blockchain anchoring is planned, not active
               </div>
               <p className="mt-4 text-sm leading-7 text-sky-100">
-                This business profile is cryptographically signed. All scores
-                are recalculated daily using decentralized AI nodes to ensure
-                zero manipulation.
+                Scores are calculated from the current database signals.
+                Government registration contributes only after an administrator
+                approves the submitted documents.
               </p>
             </section>
 
@@ -193,8 +216,8 @@ export function TrustScorePage() {
                 What changed
               </h3>
               <p className="mt-4 text-sm leading-7 text-[#5d7290]">
-                Overall score increased by +0.6 this month due to improved
-                verification tiers and higher-quality voice-review submissions.
+                Trust insights will appear after this business has enough real
+                activity to analyse.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 <span className="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#2563eb]">

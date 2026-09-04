@@ -195,6 +195,68 @@ async function initDb() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS review_ai_analysis_signals (
+        id TEXT PRIMARY KEY,
+        review_id TEXT NOT NULL UNIQUE,
+        fake_review_probability DOUBLE PRECISION,
+        fake_review_confidence DOUBLE PRECISION,
+        ai_generated_probability DOUBLE PRECISION,
+        sentiment_score DOUBLE PRECISION,
+        sentiment_label TEXT,
+        toxicity_score DOUBLE PRECISION,
+        similarity_max_score DOUBLE PRECISION,
+        similarity_duplicate_count INTEGER,
+        behavior_risk_score DOUBLE PRECISION,
+        behavior_risk_level TEXT,
+        fraud_risk_score DOUBLE PRECISION,
+        fraud_risk_level TEXT,
+        recommendation_action TEXT,
+        recommendation_requires_review BOOLEAN,
+        signals_json JSONB,
+        model_versions JSONB,
+        analysis_duration_ms INTEGER,
+        analysis_timestamp TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (review_id) REFERENCES reviews(id)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS customer_behavior_profiles (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        account_age_days INTEGER,
+        review_count INTEGER,
+        average_rating DOUBLE PRECISION,
+        rating_variance DOUBLE PRECISION,
+        businesses_reviewed INTEGER,
+        verified_visit_ratio DOUBLE PRECISION,
+        average_review_length INTEGER,
+        reviews_in_last_7_days INTEGER,
+        max_reviews_single_day INTEGER,
+        behavior_risk_score DOUBLE PRECISION,
+        behavior_risk_level TEXT,
+        last_updated TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS business_ai_risk_profiles (
+        id TEXT PRIMARY KEY,
+        business_id TEXT NOT NULL UNIQUE,
+        total_reviews INTEGER,
+        average_review_quality DOUBLE PRECISION,
+        fraud_risk_score DOUBLE PRECISION,
+        trust_confidence_score DOUBLE PRECISION,
+        flagged_reviews_count INTEGER,
+        suspicious_reviewer_count INTEGER,
+        coordinated_activity_risk DOUBLE PRECISION,
+        last_updated TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
+      )
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS blockchain_records (
         id TEXT PRIMARY KEY,
         record_type TEXT NOT NULL,
@@ -240,6 +302,14 @@ async function initDb() {
         is_read BOOLEAN NOT NULL DEFAULT FALSE,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS platform_stats (
+        stat_key TEXT PRIMARY KEY,
+        stat_value BIGINT NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `);
 

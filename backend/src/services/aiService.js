@@ -109,7 +109,7 @@ function heuristicFakeReviewRisk(reviews) {
 
 async function callOpenAiFallback(payload) {
   if (!client) {
-    return payload;
+    return { ...payload, provider: "heuristic", status: "fallback" };
   }
 
   try {
@@ -131,16 +131,27 @@ async function callOpenAiFallback(payload) {
     });
 
     const content = response.choices?.[0]?.message?.content;
-    if (!content) return payload;
+    if (!content)
+      return { ...payload, provider: "heuristic", status: "fallback" };
 
-    return JSON.parse(content);
+    return { ...JSON.parse(content), provider: "openai", status: "complete" };
   } catch (error) {
-    return payload;
+    return { ...payload, provider: "heuristic", status: "fallback" };
   }
 }
 
 async function analyzeReviews(reviews = []) {
   const stableReviews = Array.isArray(reviews) ? reviews.filter(Boolean) : [];
+  if (!stableReviews.length) {
+    return {
+      summary:
+        "Not enough review data yet. AI analysis will appear after customers submit reviews.",
+      sentiment: "not_available",
+      highlights: [],
+      provider: "none",
+      status: "fallback",
+    };
+  }
   const heuristic = heuristicSummary(stableReviews);
   const fallback = await callOpenAiFallback({
     reviews: stableReviews,
@@ -156,6 +167,8 @@ async function analyzeReviews(reviews = []) {
       Array.isArray(fallback.highlights) && fallback.highlights.length
         ? fallback.highlights
         : heuristic.highlights,
+    provider: fallback.provider || "heuristic",
+    status: fallback.status || "fallback",
   };
 }
 
@@ -174,12 +187,82 @@ async function detectFakeReviews(reviews = []) {
       Array.isArray(fallback.flags) && fallback.flags.length
         ? fallback.flags
         : heuristic.flags,
+    provider: fallback.provider || "heuristic",
+    status: fallback.status || "fallback",
+  };
+}
+
+async function analyzeBusinessHealth(reviews = []) {
+  const texts = Array.isArray(reviews)
+    ? reviews.filter(Boolean).map(String)
+    : [];
+  const corpus = texts.join(" ").toLowerCase();
+  const complaintTerms = [
+    "slow",
+    "wait",
+    "late",
+    "delay",
+    "expensive",
+    "poor",
+    "rude",
+    "issue",
+    "problem",
+  ];
+  const complaintCount = complaintTerms.reduce(
+    (count, term) =>
+      count + (corpus.match(new RegExp(`\\b${term}\\w*`, "g")) || []).length,
+    0,
+  );
+  if (texts.length > 0 && texts.length < 3) {
+    return {
+      status: "Not enough data",
+      problem: "Not enough review data yet.",
+      reason: "The AI needs at least 3 reviews to identify a reliable pattern.",
+      recommendation:
+        "Invite more customers to leave honest, specific feedback.",
+      expectedBenefit:
+        "More feedback will make future recommendations more useful.",
+    };
+  }
+  if (!texts.length) {
+    return {
+      status: "Not enough data",
+      problem: "Not enough review data yet.",
+      reason: "The business has no review history to identify a pattern.",
+      recommendation:
+        "Invite customers to leave honest reviews after real visits.",
+      expectedBenefit:
+        "More feedback will make future recommendations more reliable.",
+    };
+  }
+  if (complaintCount > Math.max(1, texts.length / 2)) {
+    return {
+      status: "Needs Attention",
+      problem: "Customers are repeatedly mentioning service problems.",
+      reason:
+        "Words about delays, waiting, or service issues appear across the review set.",
+      recommendation:
+        "Review the busiest service period, track response time, and assign extra help when demand peaks.",
+      expectedBenefit:
+        "Shorter waits and more consistent service can improve satisfaction and future ratings.",
+    };
+  }
+  return {
+    status: "Good",
+    problem: "Customers are not showing a strong repeated complaint pattern.",
+    reason:
+      "Recent reviews contain more stable feedback than recurring negative themes.",
+    recommendation:
+      "Keep the strongest parts of the experience consistent and ask satisfied customers for specific feedback.",
+    expectedBenefit:
+      "Consistent service and detailed feedback can protect trust as the business grows.",
   };
 }
 
 module.exports = {
   analyzeReviews,
   detectFakeReviews,
+  analyzeBusinessHealth,
   heuristicSummary,
   heuristicFakeReviewRisk,
 };

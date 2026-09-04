@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 
 type ReviewBusiness = {
   id: string;
@@ -12,6 +12,18 @@ type ReviewBusiness = {
   rating: number;
   reviewsCount: number;
   image: string;
+  description?: string;
+};
+
+type CompanyResponse = {
+  id: string;
+  slug: string;
+  name: string;
+  category?: string;
+  location?: string;
+  trustScore?: number;
+  rating?: number;
+  reviewsCount?: number;
   description?: string;
 };
 
@@ -43,9 +55,11 @@ export default function ReviewPage() {
   } | null>(null);
   const [photos, setPhotos] = useState<{ data: string; name: string }[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef(0);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [coordinates, setCoordinates] = useState<{
     latitude: number;
     longitude: number;
@@ -67,7 +81,9 @@ export default function ReviewPage() {
       return;
     }
     if (!navigator.geolocation) {
-      setError("This browser cannot verify your location.");
+      queueMicrotask(() =>
+        setError("This browser cannot verify your location."),
+      );
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -91,7 +107,7 @@ export default function ReviewPage() {
         const json = await resp.json();
         const mapped = (
           Array.isArray(json.companies) ? json.companies : []
-        ).map((company: any, index: number) => ({
+        ).map((company: CompanyResponse, index: number) => ({
           id: company.id,
           slug: company.slug,
           name: company.name,
@@ -104,13 +120,21 @@ export default function ReviewPage() {
           description: company.description,
         }));
         setBusinesses(mapped);
-      } catch (e) {
+      } catch {
         setBusinesses([]);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioRecording?.previewUrl) {
+        URL.revokeObjectURL(audioRecording.previewUrl);
+      }
+    };
+  }, [audioRecording]);
 
   async function handleSubmit() {
     if (!selectedBusiness) {
@@ -145,7 +169,12 @@ export default function ReviewPage() {
           body: JSON.stringify({
             rating: selectedRating,
             review_text: reviewText.trim(),
-            audio: audioRecording,
+            audio: audioRecording
+              ? {
+                  data: audioRecording.data,
+                  durationSeconds: audioRecording.durationSeconds,
+                }
+              : null,
             photos,
             qr_token: qrToken,
             latitude: coordinates?.latitude,
@@ -172,7 +201,24 @@ export default function ReviewPage() {
     }
   }
 
+  function clearAudioRecording() {
+    if (audioRecording?.previewUrl) {
+      URL.revokeObjectURL(audioRecording.previewUrl);
+    }
+    setAudioRecording(null);
+    setIsPlaying(false);
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.currentTime = 0;
+    }
+  }
+
   async function startRecording() {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
     if (
       !navigator.mediaDevices?.getUserMedia ||
       typeof MediaRecorder === "undefined"
@@ -180,7 +226,12 @@ export default function ReviewPage() {
       setError("Audio recording is not supported by this browser.");
       return;
     }
+
     try {
+      if (audioRecording) {
+        clearAudioRecording();
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
@@ -219,6 +270,20 @@ export default function ReviewPage() {
   function stopRecording() {
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
+  }
+
+  function togglePlayback() {
+    const player = audioPlayerRef.current;
+    if (!player || !audioRecording) return;
+
+    if (player.paused) {
+      player.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    player.pause();
+    setIsPlaying(false);
   }
 
   function handlePhotoSelection(event: React.ChangeEvent<HTMLInputElement>) {
@@ -451,32 +516,54 @@ export default function ReviewPage() {
                     feedback.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-black text-white transition ${isRecording ? "bg-[#b33b4b]" : "bg-[#12304a]"}`}
-                >
-                  <i
-                    className={`bi ${isRecording ? "bi-stop-circle" : "bi-mic"}`}
-                    aria-hidden="true"
-                  />
-                  {isRecording ? "Stop recording" : "Record audio"}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-black text-white transition ${isRecording ? "bg-[#b33b4b]" : "bg-[#12304a]"}`}
+                  >
+                    <i
+                      className={`bi ${isRecording ? "bi-stop-circle" : "bi-mic"}`}
+                      aria-hidden="true"
+                    />
+                    {isRecording ? "Stop" : "Record"}
+                  </button>
+                  {audioRecording && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={togglePlayback}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[#dfeaf6] bg-white px-4 py-2 text-sm font-black text-[#12304a]"
+                      >
+                        <i
+                          className={`bi ${isPlaying ? "bi-pause-circle" : "bi-play-circle"}`}
+                          aria-hidden="true"
+                        />
+                        {isPlaying ? "Pause" : "Play"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearAudioRecording}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[#f7c7c7] bg-[#fff3f3] px-4 py-2 text-sm font-black text-[#a63636]"
+                      >
+                        <i className="bi bi-trash" aria-hidden="true" />
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               {audioRecording && (
                 <div className="mt-4 flex items-center gap-3 rounded-xl bg-white p-3">
                   <audio
+                    ref={audioPlayerRef}
                     controls
                     src={audioRecording.previewUrl}
                     className="min-w-0 flex-1"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setAudioRecording(null)}
-                    className="text-xs font-black text-[#a63636]"
-                  >
-                    Remove
-                  </button>
                 </div>
               )}
             </div>

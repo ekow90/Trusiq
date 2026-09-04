@@ -8,18 +8,41 @@
     "dev": "nodemon src/server.js",
     "db:start": "docker compose --project-name trusiq up -d postgres",
     "db:stop": "docker compose --project-name trusiq down",
-    "build": "node -e \"['src/server.js','src/app.js','src/db.js','src/routes/auth.js','src/routes/trust.js','src/routes/company.js','src/services/companyService.js','src/services/userService.js'].forEach((file) => { require('node:fs').accessSync(file); require('node:child_process').execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' }); });\""
+    "setup:env": "node setup_local_env.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:format": "prisma format",
+    "verify:ai-fallback": "node verify_ai_fallback.js",
+    "verify:model-loader": "node verify_model_loader_unavailable.js",
+    "verify:review-analysis-queue": "node verify_review_analysis_queue.js",
+    "verify:trust-recalculation": "node verify_trust_recalculation.js",
+    "verify:blockchain-anchor": "node verify_blockchain_anchor.js",
+    "verify:all": "node verify_all.js",
+    "smoke:api": "node smoke_api.js",
+    "build": "node -e \"['src/server.js','src/app.js','src/db.js','smoke_api.js','src/routes/auth.js','src/routes/trust.js','src/routes/company.js','src/services/companyService.js','src/services/userService.js','src/services/platformStatsService.js','src/services/reviewService.js','src/services/trustScoreService.js','src/services/trustRecalculationService.js','src/services/blockchainAnchorService.js','src/services/verificationService.js','src/services/ml/modelLoader.js','src/services/ml/fakeReviewDetector.js','src/services/ml/sentimentAnalyzer.js','src/services/ml/similarityAnalyzer.js','src/services/ml/behaviorAnalyzer.js','src/services/ml/fraudRiskEngine.js','src/services/ml/reviewAnalyzer.js','src/services/ml/analysisQueue.js'].forEach((file) => { require('node:fs').accessSync(file); require('node:child_process').execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' }); });\""
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@xenova/transformers": "^2.13.0",
     "bcryptjs": "^2.4.3",
+    "bull": "^4.11.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
     "openai": "^4.104.0",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "redis": "^4.6.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "prisma": "^7.10.0"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true,
+    "msgpackr-extract@3.0.4": true,
+    "protobufjs@6.11.6": true
   }
 }

@@ -20,3 +20,13 @@ backend/
 ├── .env.example
 └── package.json
 ```
+
+## Verification
+
+Run all offline backend safety checks with:
+
+```bash
+npm run verify:all
+```
+
+Frontend checks remain available from `frontend/` with `npm run build` and `npm run lint`.

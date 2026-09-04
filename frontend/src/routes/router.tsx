@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import { MainLayout } from "../layouts/MainLayout";
-import { RedesignedHomePage as HomePage } from "../pages/RedesignedHomePage";
+import { PublicHomeGate } from "./PublicHomeGate";
 import { SearchPage } from "../pages/SearchPage";
 import TrendsPage from "../pages/TrendsPage";
 import MapPage from "../pages/MapPage";
@@ -29,7 +29,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: <PublicHomeGate />,
       },
       {
         path: "search",
@@ -109,11 +109,19 @@ export const router = createBrowserRouter([
       },
       {
         path: "verification",
-        element: <VerificationPage />,
+        element: (
+          <RequireRole allowedRoles={["owner"]}>
+            <VerificationPage />
+          </RequireRole>
+        ),
       },
       {
         path: "notifications",
-        element: <NotificationsPage />,
+        element: (
+          <RequireRole allowedRoles={["customer", "owner", "admin"]}>
+            <NotificationsPage />
+          </RequireRole>
+        ),
       },
       {
         path: "report-scam",

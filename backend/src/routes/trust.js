@@ -1,6 +1,6 @@
 const express = require("express");
-const { getDb } = require("../db");
 const { upsertTrustScore } = require("../services/trustService");
+const { findTrustScoreByCompanyId } = require("../services/trustScoreService");
 
 const router = express.Router();
 
@@ -37,18 +37,11 @@ router.get("/", async (req, res) => {
   }
 
   try {
-    const db = await getDb();
-    const result = await db.query(
-      `
-        SELECT company_id AS "companyId", score, percentile, metrics, trajectory, last_updated AS "lastUpdated"
-        FROM trust_scores
-        WHERE company_id = $1
-        LIMIT 1
-      `,
-      [companyId],
-    );
+    const trustScore = companyId
+      ? await findTrustScoreByCompanyId(companyId)
+      : null;
 
-    if (!result.rows.length) {
+    if (!trustScore) {
       const fallback = {
         companyId: companyId || "system",
         score: 0,
@@ -62,14 +55,13 @@ router.get("/", async (req, res) => {
       return res.status(200).json(fallback);
     }
 
-    const row = result.rows[0];
     return res.json({
-      companyId: row.companyId,
-      score: Number(row.score ?? 0),
-      percentile: Number(row.percentile ?? 0),
-      metrics: row.metrics ? row.metrics : normalizeMetrics(),
-      trajectory: row.trajectory ? row.trajectory : [],
-      lastUpdated: row.lastUpdated,
+      companyId: trustScore.companyId,
+      score: trustScore.score,
+      percentile: trustScore.percentile,
+      metrics: trustScore.metrics || normalizeMetrics(),
+      trajectory: trustScore.trajectory || [],
+      lastUpdated: trustScore.lastUpdated,
     });
   } catch (error) {
     return res

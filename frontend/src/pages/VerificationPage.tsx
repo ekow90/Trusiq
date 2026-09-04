@@ -1,10 +1,73 @@
-﻿const documentTypes = [
+﻿import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/auth";
+
+const documentTypes = [
   { label: "Business License", required: true },
   { label: "Registration Certificate", required: true },
   { label: "Government Issued ID", required: true },
 ];
 
 export function VerificationPage() {
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const [documents, setDocuments] = useState<
+    { type: string; data: string; name: string }[]
+  >([]);
+  const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  function selectDocument(
+    type: string,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setStatus(`${file.name} is larger than 20 MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      setDocuments((current) => [
+        ...current.filter((document) => document.type !== type),
+        { type, data: String(reader.result), name: file.name },
+      ]);
+    reader.readAsDataURL(file);
+  }
+
+  async function submitVerification() {
+    if (!documents.length) {
+      setStatus("Select at least one government document first.");
+      return;
+    }
+    setSubmitting(true);
+    setStatus("");
+    try {
+      const response = await fetch("/api/companies/owner/verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ documents }),
+      });
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error || "Could not submit verification request");
+      setStatus(
+        body.message || "Verification request submitted and is pending review.",
+      );
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : "Could not submit verification request",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
   return (
     <div className="min-h-screen bg-[#edf5fb] p-4 sm:p-8">
       <div className="mx-auto w-full max-w-[440px] overflow-hidden rounded-[28px] border border-[#dfeaf6] bg-[#f8fbff] text-[#12304a] shadow-[0_28px_65px_rgba(18,48,74,0.12)]">
@@ -21,6 +84,7 @@ export function VerificationPage() {
           <div className="mt-4 flex items-center justify-between">
             <button
               type="button"
+              onClick={() => navigate(-1)}
               className="grid size-7 place-items-center rounded-full bg-white text-lg text-[#12304a] shadow-sm"
               aria-label="Back"
             >
@@ -95,9 +159,16 @@ export function VerificationPage() {
                   <div className="mb-3 grid size-12 place-items-center rounded-full bg-[#edf2f7] text-[26px] text-[#617c93]">
                     <i className="bi bi-cloud-upload" aria-hidden="true" />
                   </div>
-                  <div className="text-[16px] font-bold text-[#4d5f72]">
-                    Tap to upload file
-                  </div>
+                  <label className="cursor-pointer text-[16px] font-bold text-[#4d5f72]">
+                    <input
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png"
+                      className="sr-only"
+                      onChange={(event) => selectDocument(doc.label, event)}
+                    />
+                    {documents.find((document) => document.type === doc.label)
+                      ?.name || "Tap to upload file"}
+                  </label>
                   <div className="mt-1 text-[12px] text-[#6f8192]">
                     {index === 0
                       ? "Official permit issued by local government"
@@ -172,11 +243,23 @@ export function VerificationPage() {
 
           <button
             type="button"
+            onClick={submitVerification}
+            disabled={submitting}
             className="mt-7 flex w-full items-center justify-between rounded-[18px] bg-gradient-to-r from-[#12304a] via-[#1b4068] to-[#2f68f1] px-5 py-4 text-left text-[28px] font-black text-white shadow-[0_18px_30px_rgba(47,104,241,0.25)] transition hover:-translate-y-0.5"
           >
-            <span>Submit Verification Request</span>
+            <span>
+              {submitting ? "Submitting..." : "Submit Verification Request"}
+            </span>
             <i className="bi bi-arrow-right" aria-hidden="true" />
           </button>
+          {status && (
+            <p
+              role="status"
+              className="mt-4 rounded-[16px] bg-[#eef4ff] px-4 py-3 text-sm font-semibold text-[#24598b]"
+            >
+              {status}
+            </p>
+          )}
 
           <label className="mt-5 flex items-center gap-3 rounded-[16px] bg-white px-3 py-3 text-[14px] text-[#49637a] shadow-sm ring-1 ring-[#e2eaf3]">
             <input

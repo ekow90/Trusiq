@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 
 type AccountType = "customer" | "business";
 
@@ -87,7 +86,6 @@ const trustBenefits = [
 
 export function RegistrationPage() {
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
   const [accountType, setAccountType] = useState<AccountType>("customer");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -96,13 +94,19 @@ export function RegistrationPage() {
   const [businessCategory, setBusinessCategory] = useState("");
   const [categories, setCategories] = useState<string[]>([
     "General",
-    "Restaurants",
-    "Services",
     "IT Services",
+    "Restaurants",
     "Retail",
+    "Services",
   ]);
   const [customCategory, setCustomCategory] = useState("");
   const [businessLocation, setBusinessLocation] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [region, setRegion] = useState("");
+  const [country, setCountry] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [businessPhone, setBusinessPhone] = useState("");
   const [businessWebsite, setBusinessWebsite] = useState("");
   const [email, setEmail] = useState("");
@@ -117,9 +121,15 @@ export function RegistrationPage() {
         if (!resp.ok) return;
         const json = await resp.json();
         if (Array.isArray(json.categories) && json.categories.length) {
-          setCategories(json.categories);
+          setCategories(
+            [...json.categories]
+              .filter(Boolean)
+              .sort((a: string, b: string) =>
+                a.localeCompare(b, undefined, { sensitivity: "base" }),
+              ),
+          );
         }
-      } catch (e) {
+      } catch {
         // ignore and keep defaults
       }
     })();
@@ -282,7 +292,6 @@ export function RegistrationPage() {
                   }
 
                   const body = await resp.json();
-                  setAuth(body.user, body.token);
 
                   if (accountType === "business") {
                     const chosenCategory =
@@ -300,7 +309,27 @@ export function RegistrationPage() {
                         body: JSON.stringify({
                           name: effectiveBusinessName,
                           category: chosenCategory,
-                          location: businessLocation || "Not set yet",
+                          location:
+                            businessLocation ||
+                            [
+                              addressLine,
+                              neighborhood,
+                              city,
+                              region,
+                              country,
+                              postalCode,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") ||
+                            "Not set yet",
+                          locationFields: {
+                            addressLine,
+                            neighborhood,
+                            city,
+                            region,
+                            country,
+                            postalCode,
+                          },
                           website: businessWebsite || "",
                           phone: businessPhone || "",
                           description:
@@ -321,11 +350,11 @@ export function RegistrationPage() {
                   }
 
                   navigate(
-                    body.user.roles.includes("owner")
-                      ? "/dashboard"
-                      : "/search",
+                    accountType === "business"
+                      ? "/login?returnTo=%2Fdashboard"
+                      : "/login",
                   );
-                } catch (error) {
+                } catch {
                   alert("Registration error");
                 }
               }}
@@ -434,6 +463,86 @@ export function RegistrationPage() {
                         />
                       </span>
                     </label>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          Address line
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="123 Main Street"
+                          value={addressLine}
+                          onChange={(event) =>
+                            setAddressLine(event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          Neighborhood
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="East Legon"
+                          value={neighborhood}
+                          onChange={(event) =>
+                            setNeighborhood(event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          City
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Accra"
+                          value={city}
+                          onChange={(event) => setCity(event.target.value)}
+                        />
+                      </label>
+
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          Region
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Greater Accra"
+                          value={region}
+                          onChange={(event) => setRegion(event.target.value)}
+                        />
+                      </label>
+
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          Country
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="Ghana"
+                          value={country}
+                          onChange={(event) => setCountry(event.target.value)}
+                        />
+                      </label>
+
+                      <label className="grid gap-2">
+                        <span className="text-sm font-black text-[#12304a]">
+                          Postal code
+                        </span>
+                        <input
+                          className="h-12 rounded-xl border border-[#d8e6ef] bg-[#f8fbff] px-4 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#657b8b]"
+                          placeholder="00233"
+                          value={postalCode}
+                          onChange={(event) =>
+                            setPostalCode(event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
 
                     <label className="grid gap-2">
                       <span className="text-sm font-black text-[#12304a]">

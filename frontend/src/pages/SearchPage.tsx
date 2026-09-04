@@ -1,4 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 type BusinessRecord = {
@@ -14,15 +21,28 @@ type BusinessRecord = {
   website?: string;
 };
 
+type CompanyResponse = {
+  id: string;
+  slug: string;
+  name: string;
+  category?: string;
+  location?: string;
+  trustScore?: number;
+  rating?: number;
+  reviewsCount?: number;
+  description?: string;
+  website?: string;
+};
+
 const emptyBusinesses: BusinessRecord[] = [];
 
 const defaultCategories = [
   "All Categories",
   "General",
-  "Restaurants",
-  "Services",
   "IT Services",
+  "Restaurants",
   "Retail",
+  "Services",
 ];
 const sortOptions = ["Relevance", "Score", "Distance"];
 
@@ -50,9 +70,14 @@ export function SearchPage() {
         if (!resp.ok) return;
         const json = await resp.json();
         if (Array.isArray(json.categories) && json.categories.length) {
-          setCategories(["All Categories", ...json.categories]);
+          const sortedCategories = [...json.categories]
+            .filter(Boolean)
+            .sort((a: string, b: string) =>
+              a.localeCompare(b, undefined, { sensitivity: "base" }),
+            );
+          setCategories(["All Categories", ...sortedCategories]);
         }
-      } catch (e) {
+      } catch {
         // ignore and keep defaults
       }
     })();
@@ -75,7 +100,7 @@ export function SearchPage() {
         }
         const data = await response.json();
         const mapped = Array.isArray(data.companies)
-          ? data.companies.map((company: any) => ({
+          ? data.companies.map((company: CompanyResponse) => ({
               id: company.id,
               slug: company.slug,
               name: company.name,
@@ -89,7 +114,7 @@ export function SearchPage() {
             }))
           : [];
         setBusinesses(mapped);
-      } catch (error) {
+      } catch {
         setBusinesses([]);
       } finally {
         setLoading(false);
@@ -105,7 +130,7 @@ export function SearchPage() {
       window.clearTimeout(debounceRef.current);
     }
     if (!query || !query.trim()) {
-      setSuggestions([]);
+      window.setTimeout(() => setSuggestions([]), 0);
       return;
     }
 
@@ -120,7 +145,7 @@ export function SearchPage() {
         if (!response.ok) return;
         const data = await response.json();
         const mapped = Array.isArray(data.companies)
-          ? data.companies.map((company: any) => ({
+          ? data.companies.map((company: CompanyResponse) => ({
               id: company.id,
               slug: company.slug,
               name: company.name,
@@ -135,7 +160,7 @@ export function SearchPage() {
           : [];
 
         setSuggestions(mapped.slice(0, 6));
-      } catch (e) {
+      } catch {
         setSuggestions([]);
       }
     }, 300);
@@ -251,6 +276,12 @@ export function SearchPage() {
                     type="search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
+                    }}
                   />
                 </div>
                 <button
@@ -298,7 +329,9 @@ export function SearchPage() {
                   <div
                     ref={categoriesRef}
                     className="overflow-x-auto pb-2 pl-4 pr-12 scroll-smooth"
-                    style={{ WebkitOverflowScrolling: "touch" as any }}
+                    style={
+                      { WebkitOverflowScrolling: "touch" } as CSSProperties
+                    }
                   >
                     <div className="flex gap-2">
                       {categories.map((category) => (

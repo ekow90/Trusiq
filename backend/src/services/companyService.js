@@ -1,4 +1,98 @@
 const { getDb, saveDb, initDb } = require("../db");
+const prisma = require("../prisma");
+
+const COMPANY_SELECT = {
+  id: true,
+  ownerId: true,
+  businessName: true,
+  description: true,
+  category: true,
+  phone: true,
+  email: true,
+  website: true,
+  location: true,
+  latitude: true,
+  longitude: true,
+  verificationLevel: true,
+  trustScore: true,
+  rating: true,
+  reviewsCount: true,
+  slug: true,
+  createdAt: true,
+};
+
+function logPrismaFallback(operation, error) {
+  console.warn(
+    `[CompanyService] Prisma ${operation} failed; falling back to pg:`,
+    error.message,
+  );
+}
+
+function normalizeBusiness(row) {
+  if (!row) return null;
+
+  const verifiedReviewsCount = Number(
+    row.verifiedReviewsCount ?? row._count?.reviews ?? 0,
+  );
+  const reviewsCount = Number(row.reviewsCount ?? row.reviews_count ?? 0);
+  const businessName = row.businessName ?? row.business_name;
+  const slug = row.slug || slugify(businessName);
+
+  return {
+    id: row.id,
+    ownerId: row.ownerId ?? row.owner_id,
+    name: businessName,
+    slug,
+    category: row.category || "General",
+    location: row.location || "",
+    latitude:
+      row.latitude === null || row.latitude === undefined
+        ? null
+        : Number(row.latitude),
+    longitude:
+      row.longitude === null || row.longitude === undefined
+        ? null
+        : Number(row.longitude),
+    website: row.website || "",
+    phone: row.phone || "",
+    email: row.email || "",
+    description: row.description || "",
+    verificationLevel: row.verificationLevel ?? row.verification_level,
+    trustScore: Number(row.trustScore ?? row.trust_score ?? 0),
+    rating: Number(row.rating ?? 0),
+    reviewsCount,
+    verifiedReviewsCount,
+    verifiedReviewPercentage: reviewsCount
+      ? Number(((verifiedReviewsCount / reviewsCount) * 100).toFixed(1))
+      : 0,
+    createdAt: row.createdAt ?? row.created_at,
+  };
+}
+
+function buildBusinessLocationSummary(locationFields = {}) {
+  const values = [
+    locationFields.addressLine,
+    locationFields.neighborhood,
+    locationFields.city,
+    locationFields.region,
+    locationFields.country,
+  ].filter((value) => typeof value === "string" && value.trim());
+
+  const postalCode = String(locationFields.postalCode || "").trim();
+  const formattedCountry = values.length > 0 ? values[values.length - 1] : "";
+  if (postalCode) {
+    if (formattedCountry) {
+      values[values.length - 1] = `${formattedCountry} ${postalCode}`;
+    } else {
+      values.push(postalCode);
+    }
+  }
+
+  return values
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .join(", ");
+}
 
 function slugify(value) {
   return (
@@ -10,47 +104,35 @@ function slugify(value) {
   );
 }
 
-async function findCompanyBySlug(slug) {
-  await initDb();
-  const db = await getDb();
-  const result = await db.query(
-    `SELECT b.*, COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.verified_visit = TRUE), 0) AS verified_reviews_count
-     FROM businesses b WHERE lower(b.slug) = lower($1) OR lower(b.business_name) = lower($1) LIMIT 1`,
-    [String(slug).trim()],
-  );
-
-  if (!result.rows.length) {
-    return null;
+async function findCompanyBySlug(slug, client = prisma) {
+  const value = String(slug).trim();
+  try {
+    const row = await client.business.findFirst({
+      where: {
+        OR: [
+          { slug: { equals: value, mode: "insensitive" } },
+          { businessName: { equals: value, mode: "insensitive" } },
+        ],
+      },
+      select: {
+        ...COMPANY_SELECT,
+        _count: {
+          select: { reviews: { where: { verifiedVisit: true } } },
+        },
+      },
+    });
+    return normalizeBusiness(row);
+  } catch (error) {
+    logPrismaFallback("business lookup", error);
+    await initDb();
+    const db = await getDb();
+    const result = await db.query(
+      `SELECT b.*, COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.verified_visit = TRUE), 0) AS verified_reviews_count
+       FROM businesses b WHERE lower(b.slug) = lower($1) OR lower(b.business_name) = lower($1) LIMIT 1`,
+      [value],
+    );
+    return normalizeBusiness(result.rows[0]);
   }
-
-  const row = result.rows[0];
-  return {
-    id: row.id,
-    ownerId: row.owner_id,
-    name: row.business_name,
-    slug: row.slug || slugify(row.business_name),
-    category: row.category,
-    location: row.location,
-    latitude: row.latitude === null ? null : Number(row.latitude),
-    longitude: row.longitude === null ? null : Number(row.longitude),
-    website: row.website,
-    phone: row.phone,
-    description: row.description,
-    trustScore: Number(row.trust_score ?? 0),
-    rating: Number(row.rating ?? 0),
-    reviewsCount: Number(row.reviews_count ?? 0),
-    verifiedReviewsCount: Number(row.verified_reviews_count ?? 0),
-    verifiedReviewPercentage: row.reviews_count
-      ? Number(
-          (
-            (Number(row.verified_reviews_count ?? 0) /
-              Number(row.reviews_count)) *
-            100
-          ).toFixed(1),
-        )
-      : 0,
-    createdAt: row.created_at,
-  };
 }
 
 async function ensureUniqueSlug(name) {
@@ -112,6 +194,7 @@ async function createCompany({
   name,
   category = "General",
   location = "",
+  locationFields = {},
   website = "",
   phone = "",
   description = "",
@@ -127,12 +210,16 @@ async function createCompany({
     id || `company-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const slug = await ensureUniqueSlug(name);
   const db = await getDb();
+  const effectiveLocation =
+    location && String(location).trim()
+      ? String(location).trim()
+      : buildBusinessLocationSummary(locationFields);
 
   // attempt geocoding for precise map pins
   let latitude = null;
   let longitude = null;
   try {
-    const coords = await geocodeAddress(location);
+    const coords = await geocodeAddress(effectiveLocation);
     if (coords) {
       latitude = coords.latitude;
       longitude = coords.longitude;
@@ -150,7 +237,7 @@ async function createCompany({
       String(name).trim(),
       slug,
       String(category || "General").trim(),
-      String(location || "").trim(),
+      String(effectiveLocation || "").trim(),
       String(website || "").trim(),
       String(phone || "").trim(),
       String(description || "").trim(),
@@ -167,10 +254,7 @@ async function createCompany({
   return await findCompanyBySlug(slug);
 }
 
-async function listCompanies(options = {}) {
-  await initDb();
-  const db = await getDb();
-
+async function listCompanies(options = {}, client = prisma) {
   const {
     q,
     category,
@@ -179,6 +263,55 @@ async function listCompanies(options = {}) {
     limit = 100,
     offset = 0,
   } = options || {};
+
+  try {
+    const where = {};
+    if (q && String(q).trim()) {
+      const search = String(q).trim();
+      where.OR = [
+        { businessName: { contains: search, mode: "insensitive" } },
+        { category: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (
+      category &&
+      String(category).trim() &&
+      String(category).trim().toLowerCase() !== "all categories"
+    ) {
+      where.category = String(category).trim();
+    }
+    if (
+      verifiedOnly === true ||
+      verifiedOnly === "true" ||
+      verifiedOnly === "1"
+    ) {
+      where.trustScore = { gte: 80 };
+    }
+
+    const rows = await client.business.findMany({
+      where,
+      orderBy:
+        sort && String(sort).toLowerCase() === "score"
+          ? { trustScore: "desc" }
+          : { createdAt: "desc" },
+      skip: Math.max(0, Number(offset || 0)),
+      take: Math.max(0, Number(limit || 100)),
+      select: {
+        ...COMPANY_SELECT,
+        _count: {
+          select: { reviews: { where: { verifiedVisit: true } } },
+        },
+      },
+    });
+    return rows.map(normalizeBusiness);
+  } catch (error) {
+    logPrismaFallback("business list", error);
+  }
+
+  await initDb();
+  const db = await getDb();
 
   const clauses = [];
   const params = [];
@@ -232,40 +365,54 @@ async function listCompanies(options = {}) {
 
   const result = await db.query(sql, params);
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    ownerId: row.owner_id,
-    name: row.business_name,
-    slug: row.slug || slugify(row.business_name),
-    category: row.category,
-    location: row.location,
-    latitude: row.latitude === null ? null : Number(row.latitude),
-    longitude: row.longitude === null ? null : Number(row.longitude),
-    website: row.website,
-    phone: row.phone,
-    description: row.description,
-    trustScore: Number(row.trust_score ?? 0),
-    rating: Number(row.rating ?? 0),
-    reviewsCount: Number(row.reviews_count ?? 0),
-    verifiedReviewsCount: Number(row.verified_reviews_count ?? 0),
-    verifiedReviewPercentage: row.reviews_count
-      ? Number(
-          (
-            (Number(row.verified_reviews_count ?? 0) /
-              Number(row.reviews_count)) *
-            100
-          ).toFixed(1),
-        )
-      : 0,
-    createdAt: row.created_at,
-  }));
+  return result.rows.map(normalizeBusiness);
+}
+
+async function findBusinessesByOwner(ownerId, options = {}, client = prisma) {
+  const { limit = 100, offset = 0 } = options || {};
+  try {
+    const rows = await client.business.findMany({
+      where: { ownerId: String(ownerId) },
+      orderBy: { createdAt: "desc" },
+      skip: Math.max(0, Number(offset || 0)),
+      take: Math.max(0, Number(limit || 100)),
+      select: {
+        ...COMPANY_SELECT,
+        _count: {
+          select: { reviews: { where: { verifiedVisit: true } } },
+        },
+      },
+    });
+    return rows.map(normalizeBusiness);
+  } catch (error) {
+    logPrismaFallback("owner business lookup", error);
+    await initDb();
+    const db = await getDb();
+    const result = await db.query(
+      `SELECT b.*, COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.verified_visit = TRUE), 0) AS verified_reviews_count
+       FROM businesses b WHERE b.owner_id = $1 ORDER BY b.created_at DESC LIMIT $2 OFFSET $3`,
+      [
+        String(ownerId),
+        Math.max(0, Number(limit || 100)),
+        Math.max(0, Number(offset || 0)),
+      ],
+    );
+    return result.rows.map(normalizeBusiness);
+  }
+}
+
+async function getTopBusinesses(options = {}) {
+  return listCompanies({ ...options, sort: "score" });
 }
 
 module.exports = {
   createCompany,
   listCompanies,
   findCompanyBySlug,
+  findBusinessesByOwner,
+  getTopBusinesses,
   ensureUniqueSlug,
+  buildBusinessLocationSummary,
   // return distinct categories
   getCategories: async function getCategories() {
     await initDb();
@@ -354,10 +501,11 @@ module.exports = {
 
     // merge DB categories with defaults, dedupe and sort with defaults preserved first
     const set = new Set();
-    // include defaults first for predictable order
     defaultCategories.forEach((c) => set.add(c));
     rows.forEach((c) => set.add(c));
 
-    return Array.from(set);
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    );
   },
 };

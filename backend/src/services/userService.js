@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const { getDb, saveDb } = require("../db");
+const prisma = require("../prisma");
 
 function parseRoles(raw) {
   if (!raw) return [];
@@ -55,30 +56,96 @@ async function createUser({
   };
 }
 
-async function findUserByEmail(email) {
-  const db = await getDb();
-  const result = await db.query(
-    `SELECT id, email, password_hash, full_name AS name, role, roles, company_id, account_status
-     FROM users WHERE email = $1`,
-    [String(email).trim().toLowerCase()],
-  );
+async function findUserByEmail(email, client = prisma) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  try {
+    const row = await client.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        passwordHash: true,
+        role: true,
+        roles: true,
+        companyId: true,
+        accountStatus: true,
+      },
+    });
+    return normalizeUser(row);
+  } catch (error) {
+    const db = await getDb();
+    const result = await db.query(
+      `SELECT id, email, password_hash, full_name AS name, role, roles, company_id, account_status
+       FROM users WHERE email = $1`,
+      [normalizedEmail],
+    );
+    return normalizeUser(result.rows[0]);
+  }
+}
 
-  if (!result.rows.length) return null;
+async function findUserById(id, client = prisma) {
+  try {
+    const row = await client.user.findUnique({
+      where: { id: String(id) },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        passwordHash: true,
+        role: true,
+        roles: true,
+        companyId: true,
+        accountStatus: true,
+      },
+    });
+    return normalizeUser(row);
+  } catch (error) {
+    const db = await getDb();
+    const result = await db.query(
+      `SELECT id, email, password_hash, full_name AS name, role, roles, company_id, account_status
+       FROM users WHERE id = $1`,
+      [String(id)],
+    );
+    return normalizeUser(result.rows[0]);
+  }
+}
 
-  const row = result.rows[0];
+function normalizeUser(row) {
+  if (!row) return null;
+
   return {
     id: row.id,
     email: row.email,
-    name: row.name,
+    name: row.name ?? row.fullName,
     roles: parseRoles(row.roles || row.role),
-    companyId: row.company_id,
-    accountStatus: row.account_status,
-    passwordHash: row.password_hash,
+    companyId: row.companyId ?? row.company_id,
+    accountStatus: row.accountStatus ?? row.account_status,
+    passwordHash: row.passwordHash ?? row.password_hash,
   };
 }
 
 async function verifyPassword(plainPassword, passwordHash) {
   return bcrypt.compare(plainPassword, passwordHash);
+}
+
+function normalizeAdminUserList(rows = []) {
+  return rows.map((row) => {
+    const roles = parseRoles(row.roles || row.role);
+    const normalizedRoles = roles.length ? roles : [row.role || "customer"];
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      roles: normalizedRoles,
+      role: normalizedRoles[0] || "customer",
+      status: row.account_status || row.status || "active",
+      accountType: row.role || normalizedRoles[0] || "customer",
+      emailVerified: Boolean(row.email_verified ?? row.emailVerified),
+      companyId: row.company_id || null,
+      createdAt: row.created_at || row.createdAt || null,
+    };
+  });
 }
 
 async function updateUserCompanyId(userId, companyId) {
@@ -137,7 +204,10 @@ async function upsertSocialUser({
 module.exports = {
   createUser,
   findUserByEmail,
+  findUserById,
   verifyPassword,
   updateUserCompanyId,
   upsertSocialUser,
+  normalizeAdminUserList,
+  parseRoles,
 };

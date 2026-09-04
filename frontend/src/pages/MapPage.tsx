@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 
+type MapBusiness = {
+  id: string;
+  name: string;
+  category?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
 export default function MapPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<MapBusiness[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,10 +20,12 @@ export default function MapPage() {
         const json = await resp.json();
         setItems(
           Array.isArray(json.companies)
-            ? json.companies.filter((c: any) => c.latitude && c.longitude)
+            ? json.companies.filter(
+                (company: MapBusiness) => company.latitude && company.longitude,
+              )
             : [],
         );
-      } catch (e) {
+      } catch {
         setItems([]);
       } finally {
         setLoading(false);
@@ -37,7 +48,7 @@ export default function MapPage() {
           ) : items.length ? (
             <div className="rounded-[18px] bg-white p-4 shadow-[0_20px_50px_rgba(18,48,74,0.08)]">
               <ul className="grid gap-2">
-                {items.map((c: any) => (
+                {items.map((c) => (
                   <li key={c.id} className="flex items-center justify-between">
                     <div>
                       <div className="font-black">{c.name}</div>

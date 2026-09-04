@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 
 export function AdminLoginPage() {
   const navigate = useNavigate();
@@ -94,7 +94,7 @@ export function AdminLoginPage() {
           <button
             disabled={busy}
             type="submit"
-            className="h-13 rounded-xl bg-gradient-to-r from-[#2f68f1] to-[#6aa8ff] px-5 py-3 text-sm font-black text-white shadow-[0_16px_28px_rgba(47,104,241,0.25)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+            className="h-13 rounded-xl border border-[#7eb8df]/30 bg-gradient-to-r from-[#2f68f1] to-[#6aa8ff] px-5 py-3 text-sm font-black text-white shadow-[0_16px_28px_rgba(47,104,241,0.3)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
           >
             {busy ? "Verifying..." : "Enter administrator console"}
           </button>

@@ -1,22 +1,23 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: ReactNode
-  icon?: string
-  variant?: 'primary' | 'secondary'
-}
+  children: ReactNode;
+  icon?: string;
+  variant?: "primary" | "secondary";
+};
 
 export function Button({
   children,
   icon,
-  variant = 'primary',
-  className = '',
+  variant = "primary",
+  className = "",
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: 'bg-[#17211c] text-white hover:bg-[#26362e]',
-    secondary: 'border border-[#c9d8ce] bg-white text-[#17211c] hover:bg-[#eef5ef]',
-  }
+    primary: "bg-[#12304a] text-white hover:bg-[#1f4b70] shadow-sm",
+    secondary:
+      "border border-[#c9d8ce] bg-white text-[#12304a] hover:bg-[#eef5ef] shadow-sm",
+  };
 
   return (
     <button
@@ -27,5 +28,5 @@ export function Button({
       {icon ? <i className={`bi ${icon}`} aria-hidden="true" /> : null}
       {children}
     </button>
-  )
+  );
 }

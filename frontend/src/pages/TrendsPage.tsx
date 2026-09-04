@@ -10,8 +10,19 @@ const businessImages = [
   "https://images.unsplash.com/photo-1522204523234-8729aa6e65af?auto=format&fit=crop&w=1200&q=80",
 ];
 
+type TrendingBusiness = {
+  id: string;
+  slug: string;
+  name: string;
+  category?: string;
+  location?: string;
+  description?: string;
+  trustScore?: number;
+  image: string;
+};
+
 export default function TrendsPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<TrendingBusiness[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -22,13 +33,13 @@ export default function TrendsPage() {
         const json = await resp.json();
         const businesses = Array.isArray(json.companies) ? json.companies : [];
         setItems(
-          businesses.map((business: any, index: number) => ({
+          businesses.map((business: TrendingBusiness, index: number) => ({
             ...business,
             image:
               business.image || businessImages[index % businessImages.length],
           })),
         );
-      } catch (e) {
+      } catch {
         setItems([]);
       } finally {
         setLoading(false);
@@ -74,7 +85,7 @@ export default function TrendsPage() {
               </p>
             </div>
           ) : items.length ? (
-            items.map((business: any, index: number) => (
+            items.map((business, index) => (
               <article
                 key={business.id}
                 className="group relative overflow-hidden rounded-[30px] border border-[#dfeaf6] bg-white shadow-[0_24px_70px_rgba(18,48,74,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_80px_rgba(18,48,74,0.14)]"

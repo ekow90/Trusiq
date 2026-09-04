@@ -30,6 +30,9 @@ node_modules/
 dist/
 coverage/
 *.log
+backend/ml_models/
+backend/src/ml_models/
+backend/verify_stage2_output.txt
 
 # Environment / secrets
 .env

@@ -14,23 +14,17 @@ type BusinessSpotlight = {
   tone: string;
 };
 
-const placeholderBusinesses: BusinessSpotlight[] = [];
+type CompanyResponse = {
+  id?: string;
+  slug: string;
+  name: string;
+  category?: string;
+  location?: string;
+  trustScore?: number;
+  reviewsCount?: number;
+};
 
-const signals = [
-  {
-    label: "Verified visits",
-    value: "82%",
-    width: "82%",
-    color: "bg-[#9ed4ef]",
-  },
-  {
-    label: "Review quality",
-    value: "91%",
-    width: "91%",
-    color: "bg-[#7eb8df]",
-  },
-  { label: "Response rate", value: "76%", width: "76%", color: "bg-[#b2c9e5]" },
-];
+const placeholderBusinesses: BusinessSpotlight[] = [];
 
 export function RedesignedHomePage() {
   const navigate = useNavigate();
@@ -39,6 +33,11 @@ export function RedesignedHomePage() {
   const [businesses, setBusinesses] = useState<BusinessSpotlight[]>(
     placeholderBusinesses,
   );
+  const [platformStats, setPlatformStats] = useState({
+    users_joined: 0,
+    reviews_submitted: 0,
+    verified_reviews: 0,
+  });
 
   useEffect(() => {
     async function loadBusinesses() {
@@ -46,7 +45,10 @@ export function RedesignedHomePage() {
         const response = await fetch("/api/companies");
         if (!response.ok) throw new Error("Failed to fetch companies");
         const data = await response.json();
-        const mapped = (data.companies || []).map((company: any) => ({
+        const companies: CompanyResponse[] = Array.isArray(data.companies)
+          ? data.companies
+          : [];
+        const mapped = companies.map((company) => ({
           id: company.id || company.slug,
           slug: company.slug,
           name: company.name,
@@ -55,18 +57,54 @@ export function RedesignedHomePage() {
           score: String(Number(company.trustScore || 0)),
           reviews: String(Number(company.reviewsCount || 0)),
           status:
-            company.trustScore >= 80 ? "High confidence" : "Growing trust",
+            Number(company.trustScore || 0) >= 80
+              ? "High confidence"
+              : "Growing trust",
           icon: "bi-building",
           tone: "bg-[#e2f1fa] text-[#35749a]",
         }));
         setBusinesses(mapped);
-      } catch (error) {
+      } catch {
         setBusinesses([]);
       }
     }
 
     void loadBusinesses();
   }, []);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((response) => response.json())
+      .then((body) => setPlatformStats((current) => body.stats || current))
+      .catch(() => undefined);
+  }, []);
+
+  const verifiedPercentage = platformStats.reviews_submitted
+    ? Math.round(
+        (platformStats.verified_reviews / platformStats.reviews_submitted) *
+          100,
+      )
+    : 0;
+  const signals = [
+    {
+      label: "Verified visits",
+      value: `${verifiedPercentage}%`,
+      width: `${verifiedPercentage}%`,
+      color: "bg-[#9ed4ef]",
+    },
+    {
+      label: "Review quality",
+      value: `${platformStats.reviews_submitted ? 100 : 0}%`,
+      width: `${platformStats.reviews_submitted ? 100 : 0}%`,
+      color: "bg-[#7eb8df]",
+    },
+    {
+      label: "Members joined",
+      value: String(platformStats.users_joined),
+      width: "100%",
+      color: "bg-[#b2c9e5]",
+    },
+  ];
 
   const search = query.toLowerCase();
   const visibleBusinesses = businesses.filter(
@@ -237,6 +275,12 @@ export function RedesignedHomePage() {
                       className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-semibold text-[#12304a] outline-none placeholder:text-[#8ba2b1]"
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          event.currentTarget.form?.requestSubmit();
+                        }
+                      }}
                       placeholder="Search a business or service"
                       type="search"
                     />

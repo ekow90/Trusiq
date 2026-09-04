@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export function LoginPage() {
       const body = await resp.json();
       setAuth(body.user, body.token);
       navigateAfterLogin(body.user);
-    } catch (error) {
+    } catch {
       alert(`Unable to continue with ${provider} sign-in`);
     }
   }
@@ -145,7 +145,7 @@ export function LoginPage() {
                   // body: { token, user }
                   setAuth(body.user, body.token);
                   navigateAfterLogin(body.user);
-                } catch (e) {
+                } catch {
                   // fallback
                   alert("Login error");
                 }

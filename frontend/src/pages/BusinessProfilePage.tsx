@@ -102,7 +102,7 @@ export function BusinessProfilePage() {
         if (typeof detectorJson.riskScore === "number")
           setRiskScore(detectorJson.riskScore);
         if (Array.isArray(detectorJson.flags)) setRiskFlags(detectorJson.flags);
-      } catch (error) {
+      } catch {
         setBusiness(null);
       }
     }
@@ -504,6 +504,7 @@ export function BusinessProfilePage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => navigate("/verification")}
                     className="inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-[#d8e6ef] bg-white text-sm font-black text-[#12304a] transition hover:border-[#12304a] hover:text-[#12304a]"
                   >
                     Update verification

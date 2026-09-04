@@ -15,7 +15,7 @@ function issueToken(user) {
       companyId: user.companyId,
     },
     SECRET,
-    { expiresIn: "12h" },
+    { expiresIn: "12h", issuer: "trusiq" },
   );
 }
 
@@ -35,25 +35,20 @@ async function handleSocialLogin(req, res, provider) {
       email: profile.email,
       name: profile.name,
       avatar: profile.avatar,
-      roles:
-        Array.isArray(req.body.roles) && req.body.roles.length
-          ? req.body.roles
-          : ["customer"],
+      roles: ["customer"],
     });
 
     const token = issueToken(user);
-    return res
-      .status(200)
-      .json({
-        token,
-        user: {
-          ...user,
-          id: user.id,
-          name: user.name,
-          roles: user.roles,
-          companyId: user.companyId,
-        },
-      });
+    return res.status(200).json({
+      token,
+      user: {
+        ...user,
+        id: user.id,
+        name: user.name,
+        roles: user.roles,
+        companyId: user.companyId,
+      },
+    });
   } catch (error) {
     return res
       .status(500)
