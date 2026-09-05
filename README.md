@@ -98,3 +98,4 @@ npm run build
 - No demo credentials are required for the live DB flow.
 - The backend is designed for real-user onboarding and future production expansion.
 - AI and blockchain integrations remain optional for local development and fail safely into fallback/deferred modes.
+- Blockchain anchoring currently supports local deferred intent and an optional Polygon Amoy testnet path using free-tier RPC configuration and test MATIC. Mainnet/commercial anchoring is not enabled. Never commit wallet private keys.

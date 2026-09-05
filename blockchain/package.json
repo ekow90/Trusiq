@@ -6,6 +6,7 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.js --network hardhat",
+    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
     "verify:local-deploy": "node verify_local_deploy.js"
   },
   "devDependencies": {
