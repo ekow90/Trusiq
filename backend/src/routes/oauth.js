@@ -4,7 +4,9 @@ const { normalizeSocialUser } = require("../services/socialAuth");
 const { upsertSocialUser } = require("../services/userService");
 
 const router = express.Router();
-const SECRET = process.env.JWT_SECRET || "trusiq-dev-secret-change-me";
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET)
+  throw new Error("FATAL: JWT_SECRET environment variable is required");
 
 function issueToken(user) {
   return jwt.sign(

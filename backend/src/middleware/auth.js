@@ -1,12 +1,8 @@
 const jwt = require("jsonwebtoken");
 
-const SECRET = process.env.JWT_SECRET || "trusiq-dev-secret-change-me";
-
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "FATAL: JWT_SECRET environment variable is required in production",
-  );
-}
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET)
+  throw new Error("FATAL: JWT_SECRET environment variable is required");
 
 function authenticateToken(req, res, next) {
   const auth = req.headers["authorization"];

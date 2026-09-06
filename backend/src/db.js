@@ -1,5 +1,5 @@
 const { Pool } = require("pg");
-const bcrypt = require("bcryptjs");
+const { ensureAdminAccount } = require("./services/adminService");
 
 const connectionString =
   process.env.DATABASE_URL ||
@@ -334,47 +334,10 @@ async function initDb() {
       )
     `);
 
-    const adminEmail = (process.env.ADMIN_EMAIL || "baidoeekow3690@gmail.com")
-      .trim()
-      .toLowerCase();
-    const adminPasswordHash = await bcrypt.hash(
-      process.env.ADMIN_PASSWORD || "#EncyclopediaAdmin@0000%",
-      12,
-    );
-    const existingAdminByEmail = await client.query(
-      "SELECT id FROM users WHERE email = $1 LIMIT 1",
-      [adminEmail],
-    );
-    const existingAdminById = await client.query(
-      "SELECT id FROM users WHERE id = $1 LIMIT 1",
-      ["admin-001"],
-    );
-    const adminId =
-      existingAdminByEmail.rows[0]?.id ||
-      existingAdminById.rows[0]?.id ||
-      "admin-001";
-    await client.query(
-      `INSERT INTO users (id, full_name, email, password_hash, phone_number, profile_image, role, roles, company_id, account_status, email_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, password_hash = EXCLUDED.password_hash,
-       role = 'admin', roles = EXCLUDED.roles, account_status = 'active', email_verified = TRUE, updated_at = NOW()`,
-      [
-        adminId,
-        "System Administrator",
-        adminEmail,
-        adminPasswordHash,
-        null,
-        null,
-        "admin",
-        JSON.stringify(["admin"]),
-        null,
-        "active",
-        true,
-      ],
-    );
+    await ensureAdminAccount(client);
   } finally {
     client.release();
   }
 }
 
-module.exports = { getDb, initDb, saveDb };
+module.exports = { getDb, initDb, saveDb, ensureAdminAccount };

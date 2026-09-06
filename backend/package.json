@@ -9,6 +9,8 @@
     "db:start": "docker compose --project-name trusiq up -d postgres",
     "db:stop": "docker compose --project-name trusiq down",
     "setup:env": "node setup_local_env.js",
+    "admin:bootstrap": "node admin_bootstrap.js",
+    "admin:reset": "node admin_bootstrap.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -20,7 +22,7 @@
     "verify:blockchain-anchor": "node verify_blockchain_anchor.js",
     "verify:all": "node verify_all.js",
     "smoke:api": "node smoke_api.js",
-    "build": "node -e \"['src/server.js','src/app.js','src/db.js','smoke_api.js','src/routes/auth.js','src/routes/trust.js','src/routes/company.js','src/services/companyService.js','src/services/userService.js','src/services/platformStatsService.js','src/services/reviewService.js','src/services/trustScoreService.js','src/services/trustRecalculationService.js','src/services/blockchainAnchorService.js','src/services/verificationService.js','src/services/ml/modelLoader.js','src/services/ml/fakeReviewDetector.js','src/services/ml/sentimentAnalyzer.js','src/services/ml/similarityAnalyzer.js','src/services/ml/behaviorAnalyzer.js','src/services/ml/fraudRiskEngine.js','src/services/ml/reviewAnalyzer.js','src/services/ml/analysisQueue.js'].forEach((file) => { require('node:fs').accessSync(file); require('node:child_process').execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' }); });\""
+    "build": "node -e \"['src/server.js','src/app.js','src/db.js','admin_bootstrap.js','smoke_api.js','src/routes/auth.js','src/routes/trust.js','src/routes/company.js','src/services/adminService.js','src/services/companyService.js','src/services/userService.js','src/services/platformStatsService.js','src/services/reviewService.js','src/services/trustScoreService.js','src/services/trustRecalculationService.js','src/services/blockchainAnchorService.js','src/services/verificationService.js','src/services/ml/modelLoader.js','src/services/ml/fakeReviewDetector.js','src/services/ml/sentimentAnalyzer.js','src/services/ml/similarityAnalyzer.js','src/services/ml/behaviorAnalyzer.js','src/services/ml/fraudRiskEngine.js','src/services/ml/reviewAnalyzer.js','src/services/ml/analysisQueue.js'].forEach((file) => { require('node:fs').accessSync(file); require('node:child_process').execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' }); });\""
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

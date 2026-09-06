@@ -27,10 +27,40 @@ getDb()
     console.warn("[App] ML analysis queue unavailable:", err.message);
   });
 
-app.use(cors());
-app.use(express.json({ limit: "110mb" }));
+const localOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+];
+const configuredOrigins = String(process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set([...localOrigins, ...configuredOrigins]);
 
-app.get("/health", (req, res) => res.json({ status: "ok" }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error("Origin is not allowed by CORS"));
+    },
+  }),
+);
+// Temporary limit preserves current 4-photo/audio/document base64 workflows.
+app.use(express.json({ limit: "128mb" }));
+
+app.get("/health", async (req, res) => {
+  try {
+    const db = await getDb();
+    await db.query("SELECT 1");
+    return res.json({ status: "ok", database: "ok" });
+  } catch (error) {
+    return res
+      .status(503)
+      .json({ status: "degraded", database: "unavailable" });
+  }
+});
 app.use("/api/auth", authRouter);
 app.use("/api/oauth", oauthRouter);
 app.use("/api/stats", statsRouter);

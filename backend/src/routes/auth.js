@@ -2,14 +2,20 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { authenticateToken } = require("../middleware/auth");
-const { findUserByEmail, createUser } = require("../services/userService");
+const {
+  findUserByEmail,
+  findUserById,
+  createUser,
+} = require("../services/userService");
 const {
   listReviewsByUser,
   toLegacyReview,
 } = require("../services/reviewService");
 
 const router = express.Router();
-const SECRET = process.env.JWT_SECRET || "trusiq-dev-secret-change-me";
+const SECRET = process.env.JWT_SECRET;
+if (!SECRET)
+  throw new Error("FATAL: JWT_SECRET environment variable is required");
 
 // Validation helpers
 function validateEmail(email) {
@@ -168,6 +174,32 @@ router.post("/admin-login", async (req, res) => {
     issuer: "trusiq-admin",
   });
   return res.json({ token, user: payload });
+});
+
+router.post("/admin/change-password", authenticateToken, async (req, res) => {
+  if (!req.user.roles?.includes("admin")) {
+    return res.status(403).json({ error: "Administrator access required" });
+  }
+  const { currentPassword, newPassword, confirmPassword } = req.body || {};
+  const current = validatePassword(currentPassword);
+  const next = validatePassword(newPassword);
+  if (!current || !next || next !== confirmPassword) {
+    return res
+      .status(400)
+      .json({ error: "Valid matching new passwords are required" });
+  }
+
+  const user = await findUserById(req.user.id);
+  if (!user || !(await bcrypt.compare(current, user.passwordHash))) {
+    return res.status(401).json({ error: "Current password is incorrect" });
+  }
+  const passwordHash = await bcrypt.hash(next, 12);
+  const db = await require("../db").getDb();
+  await db.query(
+    "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+    [passwordHash, req.user.id],
+  );
+  return res.json({ success: true, message: "Administrator password updated" });
 });
 
 router.post("/register", async (req, res) => {

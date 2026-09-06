@@ -30,3 +30,15 @@ npm run verify:all
 ```
 
 Frontend checks remain available from `frontend/` with `npm run build` and `npm run lint`.
+
+## Admin bootstrap
+
+Configure `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_USER_ID` in
+the backend environment, then run:
+
+```bash
+npm run admin:bootstrap
+```
+
+`npm run admin:reset` is an alias. The command never prints the password and
+refuses unsafe changes to an existing admin user ID.

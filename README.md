@@ -45,6 +45,13 @@ it is absent. Polygon and blockchain variables are also optional locally;
 review hashes use deferred local-intent mode when blockchain anchoring is not
 configured.
 
+For deployment preparation, also configure `FRONTEND_URL`, `ADMIN_EMAIL`,
+`ADMIN_PASSWORD`, and optionally `ADMIN_USER_ID`. Run `npm run admin:bootstrap`
+to create or update the configured admin without printing the password. The
+admin password can later be changed through the protected admin password
+endpoint; changing an existing admin ID requires an explicit foreign-key-safe
+migration and is refused automatically.
+
 Run the offline backend safety checks and syntax build with:
 
 ```bash
@@ -85,6 +92,10 @@ and the backend before testing API-backed pages. Run frontend checks with:
 npm run lint
 npm run build
 ```
+
+For a Render Static Site, set `VITE_API_BASE_URL` to the deployed backend URL,
+or configure a Render `/api/*` rewrite. The local default remains `/api` so the
+Vite development proxy continues to work.
 
 ## Real user flow
 
