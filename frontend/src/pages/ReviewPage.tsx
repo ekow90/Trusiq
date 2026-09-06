@@ -57,8 +57,10 @@ export default function ReviewPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef(0);
+  const recordingSessionRef = useRef(0);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [coordinates, setCoordinates] = useState<{
     latitude: number;
@@ -129,7 +131,14 @@ export default function ReviewPage() {
   }, []);
 
   useEffect(() => {
+    const audioPlayer = audioPlayerRef.current;
     return () => {
+      recordingSessionRef.current += 1;
+      mediaRecorderRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current = null;
+      audioPlayer?.pause();
       if (audioRecording?.previewUrl) {
         URL.revokeObjectURL(audioRecording.previewUrl);
       }
@@ -234,16 +243,29 @@ export default function ReviewPage() {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
+      const recordingSession = ++recordingSessionRef.current;
+      mediaStreamRef.current = stream;
       audioChunksRef.current = [];
       recordingStartedAtRef.current = Date.now();
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setIsRecording(false);
+        setError("Audio recording failed. Please try again.");
+      };
       recorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
+        if (mediaStreamRef.current === stream) mediaStreamRef.current = null;
         const blob = new Blob(audioChunksRef.current, {
           type: recorder.mimeType || "audio/webm",
         });
+        const previewUrl = URL.createObjectURL(blob);
+        if (recordingSession !== recordingSessionRef.current) {
+          URL.revokeObjectURL(previewUrl);
+          return;
+        }
         const bytes = new Uint8Array(await blob.arrayBuffer());
         let binary = "";
         bytes.forEach((byte) => {
@@ -251,7 +273,7 @@ export default function ReviewPage() {
         });
         setAudioRecording({
           data: `data:${blob.type};base64,${btoa(binary)}`,
-          previewUrl: URL.createObjectURL(blob),
+          previewUrl,
           durationSeconds: Math.max(
             1,
             Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
@@ -263,12 +285,17 @@ export default function ReviewPage() {
       setIsRecording(true);
       setError("");
     } catch {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
       setError("Microphone access is required to record an audio review.");
     }
   }
 
   function stopRecording() {
-    mediaRecorderRef.current?.stop();
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
     setIsRecording(false);
   }
 
@@ -277,8 +304,13 @@ export default function ReviewPage() {
     if (!player || !audioRecording) return;
 
     if (player.paused) {
-      player.play();
-      setIsPlaying(true);
+      void player
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          setIsPlaying(false);
+          setError("Audio playback could not start.");
+        });
       return;
     }
 
