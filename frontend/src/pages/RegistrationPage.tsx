@@ -273,17 +273,20 @@ export function RegistrationPage() {
                 }
 
                 try {
-                  const resp = await fetch("/api/auth/register", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      name,
-                      email,
-                      password,
-                      roles:
-                        accountType === "business" ? ["owner"] : ["customer"],
-                    }),
-                  });
+                  const resp = await fetch(
+                    `${import.meta.env.VITE_API_BASE_URL}/api/auth/register`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        roles:
+                          accountType === "business" ? ["owner"] : ["customer"],
+                      }),
+                    },
+                  );
 
                   if (!resp.ok) {
                     const err = await resp.json().catch(() => ({}));
